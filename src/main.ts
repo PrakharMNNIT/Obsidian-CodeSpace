@@ -5,7 +5,6 @@ import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
 import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab, FolderSuggestModal } from "./settings";
 import { registerCodeEmbedProcessor } from "./code_embed";
 import { registerNativePdfExportPatch } from "./native_pdf_export_patch";
-import { exportCurrentNoteToPdf } from "./pdf_export";
 import { t } from "./lang/helpers";
 
 // 文件创建模态框
@@ -197,14 +196,6 @@ export default class CodeSpacePlugin extends Plugin {
 					return true;
 				}
 				return false;
-			}
-		});
-
-		this.addCommand({
-			id: 'export-current-note-pdf',
-			name: t('CMD_EXPORT_CURRENT_NOTE_PDF'),
-			callback: async () => {
-				await exportCurrentNoteToPdf(this);
 			}
 		});
 

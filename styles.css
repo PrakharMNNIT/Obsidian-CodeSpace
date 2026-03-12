@@ -881,18 +881,6 @@ body .code-space-container .cm-activeLine::selection {
 	background: var(--text-muted);
 }
 
-/* =================================================================
-   Static Fallback for PDF Export
-   ================================================================= */
-.code-space-pdf-export-root {
-	position: fixed;
-	left: -200vw;
-	top: 0;
-	width: 900px;
-	pointer-events: none;
-	opacity: 0;
-}
-
 .code-embed-static-fallback {
 	display: none;
 }

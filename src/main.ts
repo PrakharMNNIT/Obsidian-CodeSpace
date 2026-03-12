@@ -4,6 +4,7 @@ import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
 import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab, FolderSuggestModal } from "./settings";
 import { registerCodeEmbedProcessor } from "./code_embed";
+import { registerNativePdfExportPatch } from "./native_pdf_export_patch";
 import { exportCurrentNoteToPdf } from "./pdf_export";
 import { t } from "./lang/helpers";
 
@@ -138,6 +139,7 @@ export default class CodeSpacePlugin extends Plugin {
 		console.debug("Code Space: About to register code embed processor...");
 		// Register code embed processor
 		registerCodeEmbedProcessor(this);
+		registerNativePdfExportPatch(this);
 		console.debug("Code Space: Code embed processor registered");
 
 		this.registerEvent(this.app.workspace.on("window-open", () => {

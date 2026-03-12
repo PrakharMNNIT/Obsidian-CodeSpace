@@ -18,6 +18,7 @@ import { tags } from "@lezer/highlight";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { Compartment, Extension } from "@codemirror/state";
 import CodeSpacePlugin from "./main";
+import { createFencedCodeBlock } from "./code_embed_markdown";
 import { t } from "./lang/helpers";
 
 // Language packages mapping
@@ -77,40 +78,6 @@ const LANGUAGE_PACKAGES: Record<string, Extension> = {
 };
 
 const EMBED_RENDERABLE_EXTENSIONS = new Set(Object.keys(LANGUAGE_PACKAGES));
-const MARKDOWN_LANGUAGE_ALIASES: Record<string, string> = {
-	htm: "html",
-	xhtml: "html",
-	mjs: "javascript",
-	cjs: "javascript",
-	json5: "json",
-	jsonc: "json",
-	vue: "javascript",
-	svelte: "javascript",
-	astro: "javascript",
-	scss: "css",
-	sass: "css",
-	less: "css",
-	yml: "yaml",
-	urdf: "xml",
-	xacro: "xml",
-	svg: "xml",
-	xsd: "xml",
-	xsl: "xml",
-	xslt: "xml",
-	wsdl: "xml",
-	plist: "xml",
-	csproj: "xml",
-	vcxproj: "xml",
-	props: "xml",
-	targets: "xml",
-	config: "xml",
-	toml: "yaml",
-	ini: "yaml",
-	cfg: "yaml",
-	conf: "yaml",
-};
-
-
 // Syntax highlighting styles
 const lightHighlightStyle = HighlightStyle.define([
 	{ tag: tags.keyword, color: "#af00db" },
@@ -183,21 +150,6 @@ const readOnlyTheme = EditorView.theme({
 		lineHeight: "var(--code-space-embed-line-height, 20px) !important",
 	},
 });
-
-function getMarkdownLanguage(ext: string): string {
-	return MARKDOWN_LANGUAGE_ALIASES[ext] ?? ext;
-}
-
-function createFencedCodeBlock(content: string, ext: string): string {
-	const markdownLanguage = getMarkdownLanguage(ext);
-	const fenceMatches = content.match(/`+/g) ?? [];
-	let longestFence = 0;
-	for (const fence of fenceMatches) {
-		longestFence = Math.max(longestFence, fence.length);
-	}
-	const fence = "`".repeat(Math.max(3, longestFence + 1));
-	return `${fence}${markdownLanguage}\n${content}\n${fence}`;
-}
 
 class CodeEmbedChild extends MarkdownRenderChild {
 	private editorView: EditorView | null = null;
@@ -430,6 +382,22 @@ function queueAllCodeEmbedsInDocument(doc: Document, docWindow: Window, plugin: 
 		rememberSourcePath(embedEl, sourcePath);
 		scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
 	});
+}
+
+export function queueCodeEmbedsInElement(rootEl: HTMLElement, plugin: CodeSpacePlugin, sourcePath: string) {
+	if (!sourcePath) return;
+
+	ensureCodeSpaceStylesInDocument(rootEl.ownerDocument, plugin);
+	rememberSourcePath(rootEl, sourcePath);
+
+	const embeds = rootEl.classList.contains("file-embed")
+		? [rootEl]
+		: Array.from(rootEl.querySelectorAll<HTMLElement>(".file-embed"));
+
+	for (const embedEl of embeds) {
+		rememberSourcePath(embedEl, sourcePath);
+		scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
+	}
 }
 
 function installPrintRefreshForDocument(doc: Document, docWindow: Window, plugin: CodeSpacePlugin) {

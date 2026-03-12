@@ -1,4 +1,4 @@
-import { MarkdownRenderChild, TFile, EventRef, normalizePath } from "obsidian";
+import { MarkdownRenderChild, MarkdownRenderer, TFile, EventRef, normalizePath } from "obsidian";
 import { EditorView } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { lineNumbers } from "@codemirror/view";
@@ -27,13 +27,27 @@ const LANGUAGE_PACKAGES: Record<string, Extension> = {
 	'cpp': cpp(),
 	'h': cpp(),
 	'hpp': cpp(),
+	'cc': cpp(),
+	'cxx': cpp(),
 	'js': javascript({ jsx: true }),
 	'ts': javascript({ jsx: true }),
 	'jsx': javascript({ jsx: true }),
 	'tsx': javascript({ jsx: true }),
 	'json': javascript({ jsx: true }),
+	'mjs': javascript({ jsx: true }),
+	'cjs': javascript({ jsx: true }),
+	'json5': javascript({ jsx: true }),
+	'jsonc': javascript({ jsx: true }),
+	'vue': javascript({ jsx: true }),
+	'svelte': javascript({ jsx: true }),
+	'astro': javascript({ jsx: true }),
 	'html': html(),
+	'htm': html(),
+	'xhtml': html(),
 	'css': css(),
+	'scss': css(),
+	'sass': css(),
+	'less': css(),
 	'sql': sql(),
 	'php': php(),
 	'rs': rust(),
@@ -43,7 +57,59 @@ const LANGUAGE_PACKAGES: Record<string, Extension> = {
 	'yaml': yaml(),
 	'yml': yaml(),
 	'xml': xml(),
+	'urdf': xml(),
+	'xacro': xml(),
+	'svg': xml(),
+	'xsd': xml(),
+	'xsl': xml(),
+	'xslt': xml(),
+	'wsdl': xml(),
+	'plist': xml(),
+	'csproj': xml(),
+	'vcxproj': xml(),
+	'props': xml(),
+	'targets': xml(),
+	'config': xml(),
+	'toml': yaml(),
+	'ini': yaml(),
+	'cfg': yaml(),
+	'conf': yaml(),
 };
+
+const EMBED_RENDERABLE_EXTENSIONS = new Set(Object.keys(LANGUAGE_PACKAGES));
+const MARKDOWN_LANGUAGE_ALIASES: Record<string, string> = {
+	htm: "html",
+	xhtml: "html",
+	mjs: "javascript",
+	cjs: "javascript",
+	json5: "json",
+	jsonc: "json",
+	vue: "javascript",
+	svelte: "javascript",
+	astro: "javascript",
+	scss: "css",
+	sass: "css",
+	less: "css",
+	yml: "yaml",
+	urdf: "xml",
+	xacro: "xml",
+	svg: "xml",
+	xsd: "xml",
+	xsl: "xml",
+	xslt: "xml",
+	wsdl: "xml",
+	plist: "xml",
+	csproj: "xml",
+	vcxproj: "xml",
+	props: "xml",
+	targets: "xml",
+	config: "xml",
+	toml: "yaml",
+	ini: "yaml",
+	cfg: "yaml",
+	conf: "yaml",
+};
+
 
 // Syntax highlighting styles
 const lightHighlightStyle = HighlightStyle.define([
@@ -118,6 +184,21 @@ const readOnlyTheme = EditorView.theme({
 	},
 });
 
+function getMarkdownLanguage(ext: string): string {
+	return MARKDOWN_LANGUAGE_ALIASES[ext] ?? ext;
+}
+
+function createFencedCodeBlock(content: string, ext: string): string {
+	const markdownLanguage = getMarkdownLanguage(ext);
+	const fenceMatches = content.match(/`+/g) ?? [];
+	let longestFence = 0;
+	for (const fence of fenceMatches) {
+		longestFence = Math.max(longestFence, fence.length);
+	}
+	const fence = "`".repeat(Math.max(3, longestFence + 1));
+	return `${fence}${markdownLanguage}\n${content}\n${fence}`;
+}
+
 class CodeEmbedChild extends MarkdownRenderChild {
 	private editorView: EditorView | null = null;
 	private languageCompartment: Compartment;
@@ -187,10 +268,202 @@ type PendingEmbedRequest = {
 const pendingEmbedTimers = new WeakMap<HTMLElement, number>();
 const pendingEmbedRequests = new WeakMap<HTMLElement, PendingEmbedRequest>();
 const embedRenderTokens = new WeakMap<HTMLElement, number>();
+const embedChildren = new WeakMap<HTMLElement, CodeEmbedChild>();
+const embedStaticChildren = new WeakMap<HTMLElement, MarkdownRenderChild>();
 const embedObserversByDoc = new WeakMap<Document, MutationObserver>();
+const embedPrintRefreshByDoc = new WeakMap<Document, () => void>();
 const CODE_SPACE_POPOUT_STYLE_ID = "code-space-popout-styles";
+const CODE_SPACE_SOURCE_PATH_ATTR = "data-code-space-source-path";
+const SOURCE_PATH_ATTR_CANDIDATES = [
+	"data-path",
+	"data-file",
+	"data-src-path",
+	"data-source-path",
+];
+
+function applyEmbedCssVariables(targetDoc: Document, plugin: CodeSpacePlugin) {
+	const embedFontSize = plugin.settings.embedFontSize;
+	const lineHeight = `${embedFontSize * 1.5}px`;
+	const styleTargets = [targetDoc.documentElement, targetDoc.body];
+
+	for (const styleTarget of styleTargets) {
+		if (!styleTarget) continue;
+		styleTarget.style.setProperty("--code-space-embed-font-size", `${embedFontSize}px`);
+		styleTarget.style.setProperty("--code-space-embed-line-height", lineHeight);
+	}
+}
+
+class CodeEmbedSectionObserverChild extends MarkdownRenderChild {
+	private observer: MutationObserver | null = null;
+
+	constructor(
+		containerEl: HTMLElement,
+		private plugin: CodeSpacePlugin,
+		private sourcePath: string
+	) {
+		super(containerEl);
+	}
+
+	onload(): void {
+		if (this.sourcePath) {
+			rememberSourcePath(this.containerEl, this.sourcePath);
+		}
+
+		const processEmbeds = () => {
+			const embeds = this.containerEl.querySelectorAll(".file-embed");
+			for (const embed of Array.from(embeds)) {
+				const embedEl = embed as HTMLElement;
+				const effectiveSourcePath =
+					this.sourcePath ||
+					resolveSourcePathForEmbed(embedEl, this.plugin);
+				if (!effectiveSourcePath) continue;
+
+				rememberSourcePath(embedEl, effectiveSourcePath);
+				scheduleProcessCodeEmbed(embedEl, this.plugin, effectiveSourcePath);
+			}
+		};
+
+		processEmbeds();
+
+		this.observer = new MutationObserver((mutations) => {
+			let shouldRescan = false;
+
+			for (const mutation of mutations) {
+				for (const node of Array.from(mutation.addedNodes)) {
+					if (node.nodeType !== 1) continue;
+					const elem = node as Element;
+					if (elem.classList.contains("file-embed") || elem.querySelector(".file-embed")) {
+						shouldRescan = true;
+						break;
+					}
+				}
+
+				if (shouldRescan) break;
+			}
+
+			if (shouldRescan) {
+				processEmbeds();
+			}
+		});
+
+		this.observer.observe(this.containerEl, { childList: true, subtree: true });
+	}
+
+	onunload(): void {
+		if (this.observer) {
+			this.observer.disconnect();
+			this.observer = null;
+		}
+	}
+}
+
+function rememberSourcePath(targetEl: HTMLElement, sourcePath: string) {
+	const trimmed = sourcePath.trim();
+	if (!trimmed || trimmed.startsWith("Untitled")) return;
+	targetEl.setAttribute(CODE_SPACE_SOURCE_PATH_ATTR, trimmed);
+}
+
+function getRememberedSourcePath(embedEl: HTMLElement): string {
+	return embedEl.closest<HTMLElement>(`[${CODE_SPACE_SOURCE_PATH_ATTR}]`)?.getAttribute(CODE_SPACE_SOURCE_PATH_ATTR) ?? "";
+}
+
+function normalizeSourcePathCandidate(rawValue: string, plugin: CodeSpacePlugin): string {
+	const normalized = normalizePath(rawValue.replace(/\\/g, "/").trim());
+	if (!normalized) return "";
+	const abstractFile = plugin.app.vault.getAbstractFileByPath(normalized);
+	return abstractFile instanceof TFile ? abstractFile.path : "";
+}
+
+function resolveSourcePathFromAncestors(embedEl: HTMLElement, plugin: CodeSpacePlugin): string {
+	for (let current: HTMLElement | null = embedEl; current; current = current.parentElement) {
+		for (const attrName of SOURCE_PATH_ATTR_CANDIDATES) {
+			const attrValue = current.getAttribute(attrName);
+			if (!attrValue) continue;
+
+			const resolvedPath = normalizeSourcePathCandidate(attrValue, plugin);
+			if (resolvedPath) return resolvedPath;
+		}
+	}
+
+	return "";
+}
+
+function disposeCodeEmbed(embedEl: HTMLElement) {
+	const ownerWindow = embedEl.ownerDocument.defaultView ?? window;
+	const pendingTimer = pendingEmbedTimers.get(embedEl);
+	if (pendingTimer) {
+		ownerWindow.clearTimeout(pendingTimer);
+		pendingEmbedTimers.delete(embedEl);
+	}
+	pendingEmbedRequests.delete(embedEl);
+	embedRenderTokens.delete(embedEl);
+
+	const child = embedChildren.get(embedEl);
+	if (child) {
+		child.onunload();
+		embedChildren.delete(embedEl);
+	}
+
+	const staticChild = embedStaticChildren.get(embedEl);
+	if (staticChild) {
+		staticChild.onunload();
+		embedStaticChildren.delete(embedEl);
+	}
+
+	embedEl.removeAttribute("data-code-space-rendered-for");
+}
+
+function queueAllCodeEmbedsInDocument(doc: Document, docWindow: Window, plugin: CodeSpacePlugin) {
+	doc.querySelectorAll(".file-embed").forEach((element) => {
+		const embedEl = element as HTMLElement;
+		const sourcePath = resolveSourcePathForEmbed(embedEl, plugin);
+		if (!sourcePath) {
+			docWindow.setTimeout(() => {
+				const retrySourcePath = resolveSourcePathForEmbed(embedEl, plugin);
+				if (!retrySourcePath) return;
+				rememberSourcePath(embedEl, retrySourcePath);
+				scheduleProcessCodeEmbed(embedEl, plugin, retrySourcePath);
+			}, 120);
+			return;
+		}
+
+		rememberSourcePath(embedEl, sourcePath);
+		scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
+	});
+}
+
+function installPrintRefreshForDocument(doc: Document, docWindow: Window, plugin: CodeSpacePlugin) {
+	if (embedPrintRefreshByDoc.has(doc)) return;
+
+	const refresh = () => {
+		ensureCodeSpaceStylesInDocument(doc, plugin);
+		queueAllCodeEmbedsInDocument(doc, docWindow, plugin);
+	};
+
+	docWindow.addEventListener("beforeprint", refresh);
+
+	const mediaQuery = typeof docWindow.matchMedia === "function" ? docWindow.matchMedia("print") : null;
+	const onMediaChange = (event: MediaQueryListEvent) => {
+		if (event.matches) {
+			refresh();
+		}
+	};
+
+	if (mediaQuery) {
+		mediaQuery.addEventListener("change", onMediaChange);
+	}
+
+	embedPrintRefreshByDoc.set(doc, () => {
+		docWindow.removeEventListener("beforeprint", refresh);
+		if (!mediaQuery) return;
+
+		mediaQuery.removeEventListener("change", onMediaChange);
+	});
+}
 
 function ensureCodeSpaceStylesInDocument(targetDoc: Document, plugin: CodeSpacePlugin) {
+	applyEmbedCssVariables(targetDoc, plugin);
+
 	// Some Obsidian popout windows do not automatically include plugin CSS. Copy the existing stylesheet
 	// reference from the main window so the embed UI renders consistently.
 	if (targetDoc.getElementById(CODE_SPACE_POPOUT_STYLE_ID)) return;
@@ -232,22 +505,42 @@ function ensureCodeSpaceStylesInDocument(targetDoc: Document, plugin: CodeSpaceP
 }
 
 function resolveSourcePathForEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin): string {
-	// Use the leaf's file path (works across popout windows) instead of activeFile.
+	const rememberedSourcePath = getRememberedSourcePath(embedEl);
+	if (rememberedSourcePath) return rememberedSourcePath;
+
+	const ancestorSourcePath = resolveSourcePathFromAncestors(embedEl, plugin);
+	if (ancestorSourcePath) {
+		rememberSourcePath(embedEl, ancestorSourcePath);
+		return ancestorSourcePath;
+	}
+
+	// Use the containing leaf's file path (works across popout windows) instead of activeFile.
 	try {
-		const leaves = plugin.app.workspace.getLeavesOfType("markdown");
-		for (const leaf of leaves) {
+		let matchedPath = "";
+
+		plugin.app.workspace.iterateAllLeaves((leaf) => {
+			if (matchedPath) return;
 			const view = leaf.view as unknown as { file?: TFile; containerEl?: HTMLElement } | null;
 			const containerEl = view?.containerEl;
 			if (containerEl && containerEl.contains(embedEl)) {
 				const filePath = view?.file?.path;
-				if (filePath) return filePath;
+				if (filePath) {
+					matchedPath = filePath;
+				}
 			}
+		});
+
+		if (matchedPath) {
+			rememberSourcePath(embedEl, matchedPath);
+			return matchedPath;
 		}
 	} catch {
 		// Ignore and fall back.
 	}
 
-	return plugin.app.workspace.getActiveFile()?.path ?? "";
+	const activePath = plugin.app.workspace.getActiveFile()?.path ?? "";
+	if (activePath) rememberSourcePath(embedEl, activePath);
+	return activePath;
 }
 
 function installEmbedObserverForDocument(doc: Document, docWindow: Window, plugin: CodeSpacePlugin) {
@@ -260,6 +553,23 @@ function installEmbedObserverForDocument(doc: Document, docWindow: Window, plugi
 
 	const observer = new MutationObserver((mutations) => {
 		for (const mutation of mutations) {
+			for (const node of Array.from(mutation.removedNodes)) {
+				if (node.nodeType !== 1) continue;
+
+				const elem = node as Element;
+				const removedEmbeds: HTMLElement[] = [];
+
+				if (elem.classList.contains("file-embed")) {
+					removedEmbeds.push(elem as HTMLElement);
+				} else {
+					elem.querySelectorAll?.(".file-embed").forEach((e) => removedEmbeds.push(e as HTMLElement));
+				}
+
+				for (const embedEl of removedEmbeds) {
+					disposeCodeEmbed(embedEl);
+				}
+			}
+
 			for (const node of Array.from(mutation.addedNodes)) {
 				// Cross-window safe: use numeric constant instead of `node instanceof Element`.
 				if (node.nodeType !== 1) continue;
@@ -281,10 +591,12 @@ function installEmbedObserverForDocument(doc: Document, docWindow: Window, plugi
 						docWindow.setTimeout(() => {
 							const retrySourcePath = resolveSourcePathForEmbed(embedEl, plugin);
 							if (!retrySourcePath) return;
+							rememberSourcePath(embedEl, retrySourcePath);
 							scheduleProcessCodeEmbed(embedEl, plugin, retrySourcePath);
 						}, 120);
 						continue;
 					}
+					rememberSourcePath(embedEl, sourcePath);
 					scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
 				}
 			}
@@ -295,29 +607,19 @@ function installEmbedObserverForDocument(doc: Document, docWindow: Window, plugi
 	embedObserversByDoc.set(doc, observer);
 
 	// Also process any existing embeds already present in this window.
-	doc.querySelectorAll(".file-embed").forEach((e) => {
-		const embedEl = e as HTMLElement;
-		const sourcePath = resolveSourcePathForEmbed(embedEl, plugin);
-		if (!sourcePath) {
-			docWindow.setTimeout(() => {
-				const retrySourcePath = resolveSourcePathForEmbed(embedEl, plugin);
-				if (!retrySourcePath) return;
-				scheduleProcessCodeEmbed(embedEl, plugin, retrySourcePath);
-			}, 120);
-			return;
-		}
-		scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
-	});
+	queueAllCodeEmbedsInDocument(doc, docWindow, plugin);
 }
 
 function scheduleProcessCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, sourcePath: string) {
 	// Obsidian may update embed attributes shortly after insertion; debounce to avoid duplicate renders.
+	rememberSourcePath(embedEl, sourcePath);
 	pendingEmbedRequests.set(embedEl, { sourcePath });
 
+	const ownerWindow = embedEl.ownerDocument.defaultView ?? window;
 	const existing = pendingEmbedTimers.get(embedEl);
-	if (existing) window.clearTimeout(existing);
+	if (existing) ownerWindow.clearTimeout(existing);
 
-	const timer = window.setTimeout(() => {
+	const timer = ownerWindow.setTimeout(() => {
 		pendingEmbedTimers.delete(embedEl);
 		const req = pendingEmbedRequests.get(embedEl);
 		pendingEmbedRequests.delete(embedEl);
@@ -340,10 +642,17 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 	const mainDoc = document;
 	ensureCodeSpaceStylesInDocument(mainDoc, plugin);
 	installEmbedObserverForDocument(mainDoc, mainWindow, plugin);
+	installPrintRefreshForDocument(mainDoc, mainWindow, plugin);
 
 	// Use Obsidian's official markdown post processor so we always get a correct ctx.sourcePath.
 	// This avoids races where MutationObserver runs before embed link attributes are stable.
 	plugin.registerMarkdownPostProcessor((el, ctx) => {
+		if (ctx.sourcePath && !ctx.sourcePath.startsWith("Untitled")) {
+			rememberSourcePath(el, ctx.sourcePath);
+		}
+
+		ctx.addChild(new CodeEmbedSectionObserverChild(el, plugin, ctx.sourcePath ?? ""));
+
 		// Obsidian renders embedded code files as div.file-embed (edit mode) or span.file-embed (reading mode)
 		// with div.file-embed-title
 		const embeds = el.querySelectorAll('.file-embed');
@@ -354,6 +663,7 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 			// MutationObserver (installed above) will catch it after DOM stabilizes.
 			const sourcePath = ctx.sourcePath;
 			if (sourcePath && !sourcePath.startsWith("Untitled")) {
+				rememberSourcePath(embedEl, sourcePath);
 				scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
 			}
 			// If sourcePath is unreliable, rely on the main window observer to pick it up.
@@ -364,40 +674,41 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 	// Reading mode uses a different rendering engine and may not trigger post processors reliably.
 	plugin.registerEvent(
 		plugin.app.workspace.on("layout-change", () => {
-			// Scan all markdown leaves for unprocessed embeds
-			const leaves = plugin.app.workspace.getLeavesOfType("markdown");
-
-			for (const leaf of leaves) {
+			// Scan all leaves for unprocessed embeds so Canvas, Excalidraw-like hosts,
+			// and popouts can reuse the same renderer.
+			plugin.app.workspace.iterateAllLeaves((leaf) => {
 				const view = leaf.view as unknown as { containerEl?: HTMLElement; file?: TFile; contentEl?: HTMLElement } | null;
-				const sourcePath = view?.file?.path ?? "";
-
-				// Try multiple container selectors for both edit and reading modes
+				const fallbackSourcePath = view?.file?.path ?? "";
 				const possibleContainers = [
-					view?.contentEl,                                    // Reading mode
-					view?.containerEl?.querySelector(".markdown-preview-view"),  // Reading mode preview
-					view?.containerEl?.querySelector(".markdown-source-view"),   // Edit mode source
-					view?.containerEl,                                  // Fallback
+					view?.contentEl,
+					view?.containerEl,
+					view?.containerEl?.querySelector(".markdown-preview-view"),
+					view?.containerEl?.querySelector(".markdown-source-view"),
 				];
+				const seenEmbeds = new Set<HTMLElement>();
 
 				for (const container of possibleContainers) {
 					if (!container) continue;
 
-					// Look for both div.file-embed (edit mode) and span.file-embed (reading mode)
 					const embeds = (container as HTMLElement).querySelectorAll(".file-embed");
 
 					for (const embed of Array.from(embeds)) {
 						const embedEl = embed as HTMLElement;
-						// Check if already processed
+						if (seenEmbeds.has(embedEl)) continue;
+						seenEmbeds.add(embedEl);
+
 						if (embedEl.querySelector(".code-embed-container")) {
 							continue;
 						}
 
+						const sourcePath = resolveSourcePathForEmbed(embedEl, plugin) || fallbackSourcePath;
 						if (sourcePath) {
+							rememberSourcePath(embedEl, sourcePath);
 							scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
 						}
 					}
 				}
-			}
+			});
 		})
 	);
 
@@ -409,6 +720,7 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 				const doc = win.doc ?? window.document;
 				ensureCodeSpaceStylesInDocument(doc, plugin);
 				installEmbedObserverForDocument(doc, window, plugin);
+				installPrintRefreshForDocument(doc, window, plugin);
 			} catch (e) {
 				console.warn("Code Embed: Failed to install observer for popout window", e);
 			}
@@ -418,6 +730,14 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 	plugin.registerEvent(
 		plugin.app.workspace.on("window-close", (win, window) => {
 			const doc = win.doc ?? window.document;
+			doc.querySelectorAll(".file-embed").forEach((embed) => {
+				disposeCodeEmbed(embed as HTMLElement);
+			});
+			const cleanupPrintRefresh = embedPrintRefreshByDoc.get(doc);
+			if (cleanupPrintRefresh) {
+				cleanupPrintRefresh();
+				embedPrintRefreshByDoc.delete(doc);
+			}
 			const observer = embedObserversByDoc.get(doc);
 			if (observer) {
 				observer.disconnect();
@@ -429,6 +749,7 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 
 async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, sourcePath: string, renderToken: number) {
 	const effectiveSourcePath = sourcePath || resolveSourcePathForEmbed(embedEl, plugin) || "";
+	if (effectiveSourcePath) rememberSourcePath(embedEl, effectiveSourcePath);
 
 	// If another debounced run already rendered this embed for the same file, skip.
 	const lastRenderedFor = embedEl.getAttribute("data-code-space-rendered-for");
@@ -588,31 +909,32 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 
 	if (!tFile) return;
 
-	if (lastRenderedFor && lastRenderedFor === tFile.path) {
-		// Already rendered for this exact file (common during fast re-renders).
-		return;
-	}
-
 	// Check if it's a TFile (not a folder)
 	if (!tFile.extension) {
 		return;
 	}
 
 	const ext = tFile.extension.toLowerCase();
-	const extensions = plugin.settings.extensions
+	const configuredExtensions = plugin.settings.extensions
 		.split(',')
 		.map((s: string) => s.trim().toLowerCase())
 		.filter((s: string) => s);
 
-	if (!extensions.includes(ext)) {
+	if (!configuredExtensions.includes(ext) && !EMBED_RENDERABLE_EXTENSIONS.has(ext)) {
+		return;
+	}
+
+	const rangeAttr = startLine > 0 ? (endLine > 0 ? `#L${startLine}-L${endLine}` : `#L${startLine}`) : "";
+	const renderKey = tFile.path + rangeAttr;
+	if (lastRenderedFor && lastRenderedFor === renderKey) {
+		// Already rendered for this exact file and line range (common during fast re-renders).
 		return;
 	}
 
 	// Read file content and render
 	await renderCodeEmbed(embedEl, tFile, plugin, renderToken, startLine, endLine);
 	if (embedRenderTokens.get(embedEl) !== renderToken) return;
-	const rangeAttr = startLine > 0 ? (endLine > 0 ? `#L${startLine}-L${endLine}` : `#L${startLine}`) : "";
-	embedEl.setAttribute("data-code-space-rendered-for", tFile.path + rangeAttr);
+	embedEl.setAttribute("data-code-space-rendered-for", renderKey);
 }
 
 async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeSpacePlugin, renderToken: number, startLine: number = 0, endLine: number = 0) {
@@ -641,6 +963,10 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	const lineCount = content.split('\n').length;
 	// 范围模式下忽略 maxEmbedLines 设置；否则使用设置值
 	const maxLines = useRangeMode ? 0 : (plugin.settings.maxEmbedLines || 0);
+
+	if (embedChildren.has(embedEl)) {
+		disposeCodeEmbed(embedEl);
+	}
 
 	// Replace the embed content with our custom code embed.
 	embedEl.empty();
@@ -750,14 +1076,25 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	// Always render both CodeMirror (for interactive viewing) and static fallback (for PDF/print)
 	// The static version is hidden by default via CSS and only shown in print context
 	const staticContainer = embedContainer.createEl("div", {
-		cls: "code-embed-static-fallback",
+		cls: "code-embed-static-fallback markdown-rendered",
 	});
-	const pre = staticContainer.createEl("pre", { cls: "code-embed-static" });
-	const code = pre.createEl("code", { cls: `language-${ext}` });
-	code.textContent = content;
+	const staticChild = new MarkdownRenderChild(staticContainer);
+	await MarkdownRenderer.render(
+		plugin.app,
+		createFencedCodeBlock(content, ext),
+		staticContainer,
+		tFile.path,
+		staticChild
+	);
+	if (embedRenderTokens.get(embedEl) !== renderToken) {
+		staticChild.onunload();
+		return;
+	}
+	embedStaticChildren.set(embedEl, staticChild);
 
 	// Create the code editor (interactive version)
 	const child = new CodeEmbedChild(editorContainer, content, ext, plugin, effectiveStartLine);
+	embedChildren.set(embedEl, child);
 
 	// Manually call onload since addChild is not available here
 	child.onload();

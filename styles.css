@@ -884,11 +884,20 @@ body .code-space-container .cm-activeLine::selection {
 /* =================================================================
    Static Fallback for PDF Export
    ================================================================= */
+.code-space-pdf-export-root {
+	position: fixed;
+	left: -200vw;
+	top: 0;
+	width: 900px;
+	pointer-events: none;
+	opacity: 0;
+}
+
 .code-embed-static-fallback {
 	display: none;
 }
 
-.code-embed-static {
+.code-embed-static-fallback pre {
 	margin: 0;
 	padding: 8px;
 	background-color: var(--background-primary);
@@ -898,9 +907,14 @@ body .code-space-container .cm-activeLine::selection {
 	font-family: var(--font-monospace), 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Source Code Pro', Consolas, 'Courier New', monospace;
 	font-size: var(--code-space-embed-font-size, 13px);
 	line-height: var(--code-space-embed-line-height, 20px);
+	box-shadow: none;
 }
 
-.code-embed-static code {
+.code-embed-static-fallback pre[class*="language-"] {
+	background: var(--background-primary);
+}
+
+.code-embed-static-fallback code {
 	display: block;
 	white-space: pre;
 	word-wrap: normal;
@@ -908,6 +922,52 @@ body .code-space-container .cm-activeLine::selection {
 	font-family: inherit;
 	font-size: inherit;
 	line-height: inherit;
+	padding: 0;
+}
+
+.code-embed-static-fallback .token.comment,
+.code-embed-static-fallback .token.prolog,
+.code-embed-static-fallback .token.doctype,
+.code-embed-static-fallback .token.cdata {
+	color: var(--code-comment, var(--text-muted));
+}
+
+.code-embed-static-fallback .token.punctuation,
+.code-embed-static-fallback .token.operator {
+	color: var(--code-punctuation, var(--text-normal));
+}
+
+.code-embed-static-fallback .token.property,
+.code-embed-static-fallback .token.tag,
+.code-embed-static-fallback .token.constant,
+.code-embed-static-fallback .token.symbol,
+.code-embed-static-fallback .token.deleted {
+	color: var(--code-value, #d19a66);
+}
+
+.code-embed-static-fallback .token.boolean,
+.code-embed-static-fallback .token.number {
+	color: var(--code-value, #098658);
+}
+
+.code-embed-static-fallback .token.selector,
+.code-embed-static-fallback .token.attr-name,
+.code-embed-static-fallback .token.string,
+.code-embed-static-fallback .token.char,
+.code-embed-static-fallback .token.builtin,
+.code-embed-static-fallback .token.inserted {
+	color: var(--code-string, #98c379);
+}
+
+.code-embed-static-fallback .token.atrule,
+.code-embed-static-fallback .token.attr-value,
+.code-embed-static-fallback .token.keyword {
+	color: var(--code-keyword, #c678dd);
+}
+
+.code-embed-static-fallback .token.function,
+.code-embed-static-fallback .token.class-name {
+	color: var(--code-function, #61afef);
 }
 
 /* PDF export optimization: show static fallback, hide interactive editor */
@@ -925,10 +985,35 @@ body .code-space-container .cm-activeLine::selection {
 		display: block !important;
 	}
 	
-	.code-embed-static {
+	.code-embed-static-fallback pre {
 		max-height: none;
 		overflow: visible;
 	}
+}
+
+body.print .code-embed-editor,
+body.mod-print .code-embed-editor,
+body.is-print .code-embed-editor,
+body.print-pdf .code-embed-editor,
+body.pdf-export .code-embed-editor {
+	display: none !important;
+}
+
+body.print .code-embed-static-fallback,
+body.mod-print .code-embed-static-fallback,
+body.is-print .code-embed-static-fallback,
+body.print-pdf .code-embed-static-fallback,
+body.pdf-export .code-embed-static-fallback {
+	display: block !important;
+}
+
+body.print .code-embed-static-fallback pre,
+body.mod-print .code-embed-static-fallback pre,
+body.is-print .code-embed-static-fallback pre,
+body.print-pdf .code-embed-static-fallback pre,
+body.pdf-export .code-embed-static-fallback pre {
+	max-height: none;
+	overflow: visible;
 }
 
 /* =================================================================

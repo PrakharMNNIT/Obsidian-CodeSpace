@@ -105,6 +105,7 @@ export default {
     CMD_RELOAD_PLUGIN: '重载插件',
     CMD_TOGGLE_OUTLINE: '切换大纲视图 (Outline)',
     CMD_SEARCH_REPLACE: '搜索与替换',
+    CMD_EXPORT_CURRENT_NOTE_PDF: '导出当前笔记为 PDF（展开代码引用）',
     RIBBON_OPEN_DASHBOARD: '打开 Code Space 主面板',
 
     // Notices
@@ -117,6 +118,12 @@ export default {
     NOTICE_RENAME_FAIL: '重命名文件失败',
     NOTICE_MOVE_SUCCESS: '已移动到',
     NOTICE_MOVE_FAIL: '移动文件失败',
+    NOTICE_EXPORT_PDF_DESKTOP_ONLY: 'PDF 导出仅支持桌面端。',
+    NOTICE_EXPORT_PDF_NO_NOTE: '请先打开一个 Markdown 笔记再导出。',
+    NOTICE_EXPORT_PDF_DIALOG_UNAVAILABLE: '保存对话框不可用，请在桌面端重试。',
+    NOTICE_EXPORT_PDF_STARTED: '正在准备 PDF 导出...',
+    NOTICE_EXPORT_PDF_SUCCESS: 'PDF 已导出到',
+    NOTICE_EXPORT_PDF_FAILED: '导出 PDF 失败',
 
     // Embed
     EMBED_TOOLTIP_OPEN: '点击打开文件',

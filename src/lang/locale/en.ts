@@ -105,6 +105,7 @@ export default {
     CMD_RELOAD_PLUGIN: 'Reload plugin',
     CMD_TOGGLE_OUTLINE: 'Toggle code outline',
     CMD_SEARCH_REPLACE: 'Search and replace',
+    CMD_EXPORT_CURRENT_NOTE_PDF: 'Export current note to PDF with code embeds',
     RIBBON_OPEN_DASHBOARD: 'Open code space dashboard',
 
     // Notices
@@ -117,6 +118,12 @@ export default {
     NOTICE_RENAME_FAIL: 'Failed to rename file',
     NOTICE_MOVE_SUCCESS: 'Moved to',
     NOTICE_MOVE_FAIL: 'Failed to move file',
+    NOTICE_EXPORT_PDF_DESKTOP_ONLY: 'PDF export is desktop only.',
+    NOTICE_EXPORT_PDF_NO_NOTE: 'Open a Markdown note to export it.',
+    NOTICE_EXPORT_PDF_DIALOG_UNAVAILABLE: 'Save dialog unavailable. Please try again on desktop.',
+    NOTICE_EXPORT_PDF_STARTED: 'Preparing PDF export...',
+    NOTICE_EXPORT_PDF_SUCCESS: 'PDF exported to',
+    NOTICE_EXPORT_PDF_FAILED: 'Failed to export PDF',
 
     // Embed
     EMBED_TOOLTIP_OPEN: 'Click to open file',

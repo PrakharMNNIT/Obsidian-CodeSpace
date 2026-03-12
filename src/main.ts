@@ -4,6 +4,7 @@ import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
 import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab, FolderSuggestModal } from "./settings";
 import { registerCodeEmbedProcessor } from "./code_embed";
+import { exportCurrentNoteToPdf } from "./pdf_export";
 import { t } from "./lang/helpers";
 
 // 文件创建模态框
@@ -139,6 +140,10 @@ export default class CodeSpacePlugin extends Plugin {
 		registerCodeEmbedProcessor(this);
 		console.debug("Code Space: Code embed processor registered");
 
+		this.registerEvent(this.app.workspace.on("window-open", () => {
+			this.updateCSSVariables();
+		}));
+
 		this.addRibbonIcon('code-glyph', t('RIBBON_OPEN_DASHBOARD'), () => {
 			void this.activateDashboard();
 		});
@@ -193,10 +198,19 @@ export default class CodeSpacePlugin extends Plugin {
 			}
 		});
 
+		this.addCommand({
+			id: 'export-current-note-pdf',
+			name: t('CMD_EXPORT_CURRENT_NOTE_PDF'),
+			callback: async () => {
+				await exportCurrentNoteToPdf(this);
+			}
+		});
+
 		console.debug("Code Space: Plugin fully loaded");
 
 		// Automatically create the outline view in the right sidebar when layout is ready
 		this.app.workspace.onLayoutReady(() => {
+			this.updateCSSVariables();
 			//void this.activateOutlineInSidebar();
 		});
 	}
@@ -308,13 +322,39 @@ export default class CodeSpacePlugin extends Plugin {
 	async saveDashboardState() {
 		await this.saveData(this.settings);
 	}
+
+	private getKnownDocuments(): Document[] {
+		const docs = new Set<Document>();
+		docs.add(document);
+
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			const view = leaf.view as unknown as { containerEl?: HTMLElement; contentEl?: HTMLElement } | null;
+			const ownerDoc =
+				view?.containerEl?.ownerDocument ??
+				view?.contentEl?.ownerDocument ??
+				null;
+			if (ownerDoc) {
+				docs.add(ownerDoc);
+			}
+		});
+
+		return Array.from(docs);
+	}
 	
 	updateCSSVariables() {
 		// Update CSS variables for embed view
 		// Use 1.5 line height ratio for consistency
 		const embedFontSize = this.settings.embedFontSize;
-		document.body.style.setProperty("--code-space-embed-font-size", `${embedFontSize}px`);
-		document.body.style.setProperty("--code-space-embed-line-height", `${embedFontSize * 1.5}px`);
+		const lineHeight = `${embedFontSize * 1.5}px`;
+
+		for (const doc of this.getKnownDocuments()) {
+			const styleTargets = [doc.documentElement, doc.body];
+			for (const styleTarget of styleTargets) {
+				if (!styleTarget) continue;
+				styleTarget.style.setProperty("--code-space-embed-font-size", `${embedFontSize}px`);
+				styleTarget.style.setProperty("--code-space-embed-line-height", lineHeight);
+			}
+		}
 	}
 
 	async activateDashboard() {

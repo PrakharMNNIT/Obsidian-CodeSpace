@@ -71,6 +71,34 @@ type ResolvedCodeEmbed = {
 	endLine: number;
 };
 
+const LOCAL_IMAGE_EXTENSIONS = new Set([
+	"png",
+	"jpg",
+	"jpeg",
+	"gif",
+	"webp",
+	"svg",
+	"bmp",
+	"ico",
+	"avif",
+	"tif",
+	"tiff",
+]);
+
+const IMAGE_MIME_TYPES: Record<string, string> = {
+	png: "image/png",
+	jpg: "image/jpeg",
+	jpeg: "image/jpeg",
+	gif: "image/gif",
+	webp: "image/webp",
+	svg: "image/svg+xml",
+	bmp: "image/bmp",
+	ico: "image/x-icon",
+	avif: "image/avif",
+	tif: "image/tiff",
+	tiff: "image/tiff",
+};
+
 const MARKDOWN_LANGUAGE_ALIASES: Record<string, string> = {
 	htm: "html",
 	xhtml: "html",
@@ -210,6 +238,10 @@ function indentMultiline(text: string, indent: string): string {
 		.join("\n");
 }
 
+function wait(ms: number): Promise<void> {
+	return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 function escapeHtml(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")
@@ -325,6 +357,166 @@ function sliceFileContent(content: string, startLine: number, endLine: number): 
 	return lines.slice(clampedStart - 1, clampedEnd).join("\n");
 }
 
+function getVaultBasePath(app: App): string | null {
+	const adapter = app.vault.adapter;
+	return adapter instanceof FileSystemAdapter
+		? adapter.getBasePath()
+		: (adapter as { getBasePath?: () => string }).getBasePath?.() ?? null;
+}
+
+function absoluteFsPathToVaultPath(app: App, absolutePath: string): string {
+	const basePath = getVaultBasePath(app);
+	if (!basePath) return "";
+
+	const normalizedBasePath = basePath.replace(/\\/g, "/").replace(/\/+$/, "");
+	const normalizedAbsolutePath = absolutePath
+		.replace(/\\/g, "/")
+		.replace(/^\/([A-Za-z]:\/)/, "$1");
+
+	const baseLower = normalizedBasePath.toLowerCase();
+	const absoluteLower = normalizedAbsolutePath.toLowerCase();
+
+	if (absoluteLower === baseLower) {
+		return "";
+	}
+
+	if (absoluteLower.startsWith(`${baseLower}/`)) {
+		return normalizedAbsolutePath.slice(normalizedBasePath.length + 1);
+	}
+
+	return "";
+}
+
+function normalizeVaultReference(app: App, rawReference: string): string {
+	const trimmed = rawReference.trim();
+	if (!trimmed) return "";
+
+	if (/^(data|blob):/i.test(trimmed) || /^https?:\/\//i.test(trimmed)) {
+		return "";
+	}
+
+	if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) {
+		try {
+			const parsed = new URL(trimmed);
+			if (parsed.protocol === "obsidian:" || parsed.protocol === "app:") {
+				const pathParam = parsed.searchParams.get("path") ?? parsed.searchParams.get("file");
+				if (pathParam) {
+					return normalizePath(decodeURIComponent(pathParam).replace(/\\/g, "/")).replace(/^\/+/, "");
+				}
+			}
+
+			if (parsed.protocol === "file:") {
+				const vaultRelativePath = absoluteFsPathToVaultPath(app, decodeURIComponent(parsed.pathname));
+				return normalizePath(vaultRelativePath).replace(/^\/+/, "");
+			}
+		} catch {
+			return "";
+		}
+
+		return "";
+	}
+
+	return normalizePath(trimmed.replace(/\\/g, "/")).replace(/^\/+/, "");
+}
+
+function resolveVaultFileReference(app: App, rawReference: string, sourcePath: string): TFile | null {
+	const cleanedReference = rawReference
+		.trim()
+		.replace(/^!?\[\[/, "")
+		.replace(/\]\]$/, "");
+
+	const pipeIndex = cleanedReference.indexOf("|");
+	const referenceWithoutAlias =
+		pipeIndex === -1 ? cleanedReference : cleanedReference.slice(0, pipeIndex).trim();
+	const hashIndex = referenceWithoutAlias.indexOf("#");
+	const fileReference =
+		hashIndex === -1 ? referenceWithoutAlias : referenceWithoutAlias.slice(0, hashIndex).trim();
+	if (!fileReference) return null;
+
+	const normalizedReference = normalizeVaultReference(app, fileReference);
+	if (!normalizedReference) return null;
+
+	let file = app.metadataCache.getFirstLinkpathDest(normalizedReference, sourcePath);
+	if (!file) {
+		const exact = app.vault.getAbstractFileByPath(normalizedReference);
+		file = exact instanceof TFile ? exact : null;
+	}
+
+	if (!file && !normalizedReference.includes("/")) {
+		const lowered = normalizedReference.toLowerCase();
+		file =
+			app.vault.getFiles().find((candidate) => candidate.name === normalizedReference) ??
+			app.vault.getFiles().find((candidate) => candidate.name.toLowerCase() === lowered) ??
+			null;
+	}
+
+	return file;
+}
+
+function getImageMimeType(file: TFile): string {
+	return IMAGE_MIME_TYPES[file.extension.toLowerCase()] ?? "application/octet-stream";
+}
+
+function toDataUrl(binary: ArrayBuffer, mimeType: string): string {
+	const bytes = new Uint8Array(binary);
+	let binaryString = "";
+	const chunkSize = 0x8000;
+
+	for (let index = 0; index < bytes.length; index += chunkSize) {
+		const chunk = bytes.subarray(index, Math.min(index + chunkSize, bytes.length));
+		binaryString += String.fromCharCode(...chunk);
+	}
+
+	return `data:${mimeType};base64,${window.btoa(binaryString)}`;
+}
+
+function extractImageReference(imageEl: HTMLImageElement): string {
+	const internalEmbed = imageEl.closest<HTMLElement>(".internal-embed, .image-embed, .media-embed");
+	const candidates = [
+		internalEmbed?.getAttribute("src"),
+		internalEmbed?.getAttribute("data-path"),
+		imageEl.getAttribute("src"),
+		imageEl.currentSrc,
+	];
+
+	for (const candidate of candidates) {
+		const value = candidate?.trim();
+		if (value) {
+			return value;
+		}
+	}
+
+	return "";
+}
+
+async function inlineLocalImages(app: App, container: HTMLElement, sourcePath: string): Promise<void> {
+	const images = Array.from(container.querySelectorAll("img"));
+
+	for (const imageEl of images) {
+		const rawReference = extractImageReference(imageEl);
+		if (!rawReference) continue;
+
+		const file = resolveVaultFileReference(app, rawReference, sourcePath);
+		if (!file || !LOCAL_IMAGE_EXTENSIONS.has(file.extension.toLowerCase())) {
+			continue;
+		}
+
+		try {
+			const binary = await app.vault.readBinary(file);
+			imageEl.setAttribute("src", toDataUrl(binary, getImageMimeType(file)));
+			imageEl.removeAttribute("srcset");
+			imageEl.setAttribute("loading", "eager");
+			imageEl.setAttribute("decoding", "sync");
+
+			if (!imageEl.getAttribute("alt")) {
+				imageEl.setAttribute("alt", file.basename);
+			}
+		} catch (error) {
+			console.warn("Code Space: Failed to inline image for PDF export", file.path, error);
+		}
+	}
+}
+
 async function expandCodeEmbedsInMarkdown(
 	plugin: CodeSpacePlugin,
 	markdown: string,
@@ -389,6 +581,8 @@ async function renderMarkdownToHtml(app: App, markdown: string, sourcePath: stri
 
 	try {
 		await MarkdownRenderer.render(app, markdown, host, sourcePath, component);
+		await wait(80);
+		await inlineLocalImages(app, host, sourcePath);
 		return host.innerHTML;
 	} finally {
 		component.unload();
@@ -426,10 +620,12 @@ body {
 body.code-space-pdf-export-body {
 	margin: 0;
 	padding: 0;
+	color: var(--text-normal, #1f2937);
 }
 
 .code-space-pdf-export-page {
 	padding: 0;
+	color: var(--text-normal, #1f2937);
 }
 
 .code-space-pdf-export-page .copy-code-button,
@@ -438,9 +634,40 @@ body.code-space-pdf-export-body {
 	display: none !important;
 }
 
+.code-space-pdf-export-page .internal-embed,
+.code-space-pdf-export-page .image-embed,
+.code-space-pdf-export-page figure {
+	page-break-inside: avoid;
+}
+
+.code-space-pdf-export-page img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin: 1rem auto;
+	border-radius: 10px;
+	box-shadow: 0 0 0 1px var(--background-modifier-border, rgba(15, 23, 42, 0.12));
+	background: var(--background-primary, #ffffff);
+	page-break-inside: avoid;
+}
+
 .code-space-pdf-export-page pre {
 	white-space: pre-wrap;
 	word-break: break-word;
+	margin: 1rem 0;
+	padding: 14px 16px;
+	background: var(--background-secondary, #f6f7f9);
+	border: 1px solid var(--background-modifier-border, #d8dde6);
+	border-radius: 12px;
+	box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+	page-break-inside: avoid;
+}
+
+.code-space-pdf-export-page pre code {
+	white-space: inherit;
+	word-break: inherit;
+	background: transparent;
+	padding: 0;
 }
 </style>
 </head>

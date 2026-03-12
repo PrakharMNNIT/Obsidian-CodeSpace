@@ -69,6 +69,8 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 - **行号范围**：支持指定起始行或行范围，精确嵌入代码片段
 - **快速预览**：悬停在链接上即可预览代码内容
 - **双向同步**：外部修改自动检测并提示
+- **原生 PDF 导出**：直接使用 Obsidian 官方 **Export to PDF**，代码文件引用会导出为真实代码块，同时保留官方版式、分页和导出设置能力
+- **宿主兼容性**：阅读模式、弹出窗口，以及复用 Obsidian 渲染链的宿主场景下，代码嵌入预览更加稳定
 
 <p align='center'><img src='img\pre3.png' width=95%></p> 
 
@@ -88,6 +90,10 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 - 若结束行超过文件总行数，自动截断至文件末尾
 - 若结束行小于起始行，自动调整为单行显示
 - 行号显示与原始文件保持一致
+
+> 从 `2.0.0` 开始，导出包含代码引用的 Markdown 文档时，可以直接使用 Obsidian 官方 **Export to PDF**。 
+
+<p align='center'><img src='img\pre8.png' width=90%></p> 
 
 ### 4. 外部挂载空间（仅桌面端）
 
@@ -280,6 +286,8 @@ obsidian-codespace/
 │   ├── outline_view.ts        # 大纲视图：侧边栏结构化导航
 │   ├── code_parser.ts         # 语法解析：多语言结构分析
 │   ├── code_embed.ts          # 嵌入处理：引用与预览逻辑
+│   ├── code_embed_markdown.ts # 代码引用展开：供原生 PDF 导出等场景复用
+│   ├── native_pdf_export_patch.ts # 原生 Export to PDF 接管与导出链 patch
 │   ├── dropdown.ts            # UI 组件：下拉/多选
 │   ├── folder_filter_modal.ts # 文件夹筛选弹窗
 │   ├── external_mount.ts      # 外部挂载：symlink/junction 管理

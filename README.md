@@ -25,7 +25,7 @@ Obsidian does not support **viewing, managing, and editing code files** out of t
 
 1. **Management space**: Provides a unified index and management space for code files, allowing you to browse all code files through a visual dashboard.
 2. **Editing space**: Enter the code file for a professional code viewing and editing environment.
-3. **Embedding space**: Deeply integrates with Obsidian's native features to support references and embedded previews of code files.
+3. **Embedding space**: Deeply integrates with Obsidian's native features to support references, embedded previews of code files, and native PDF export as real code blocks.
 4. **Mount space**: Mount external folders into the Vault via system symlinks/junctions for cross-project code management.
 
 
@@ -69,6 +69,8 @@ Elegantly embed and preview code in Markdown, allowing you to embed specific sni
 - **Line ranges**: Specify start lines or line ranges to embed code snippets precisely.
 - **Quick preview**: Hover links to preview code content.
 - **Bidirectional sync**: Automatically detect and notify on external modifications.
+- **Native PDF export**: Use Obsidian's official **Export to PDF** and code file references will be exported as real code blocks instead of gray file cards.
+- **Broader host compatibility**: Embedded code previews behave more reliably in reading mode, pop-out windows, and other hosts that reuse Obsidian's Markdown render pipeline.
 
 <p align='center'><img src='img\pre3.png' width=95%></p> 
 
@@ -88,6 +90,10 @@ Elegantly embed and preview code in Markdown, allowing you to embed specific sni
 - If end line exceeds file length, automatically truncates to end of file
 - If end line is less than start line, automatically adjusts to single line display
 - Line numbers are consistent with the original file
+
+Tip: When a note contains code file embeds, export it with Obsidian's official **Export to PDF**. Code Space keeps those embeds as real code blocks in the final PDF while preserving Obsidian's native layout and pagination.
+
+<p align='center'><img src='img\pre8.png' width=90%></p> 
 
 ### 4. External mount space (desktop only)
 

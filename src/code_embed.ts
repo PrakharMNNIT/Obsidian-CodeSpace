@@ -101,7 +101,7 @@ const darkHighlightStyle = HighlightStyle.define([
 	{ tag: [tags.definition(tags.name), tags.separator], color: "#abb2bf" },
 	{ tag: [tags.typeName, tags.className, tags.number, tags.changed, tags.annotation, tags.modifier, tags.self, tags.namespace], color: "#e5c07b" },
 	{ tag: [tags.operator, tags.operatorKeyword, tags.url, tags.escape, tags.regexp, tags.link, tags.special(tags.string)], color: "#56b6c2" },
-	{ tag: [tags.meta, tags.comment], color: "#5c6370", fontStyle: "italic" },
+	{ tag: [tags.meta, tags.comment], color: "#7a8394", fontStyle: "italic" },
 	{ tag: tags.string, color: "#98c379" },
 	{ tag: tags.atom, color: "#d19a66" },
 	{ tag: tags.invalid, color: "#f44747" },

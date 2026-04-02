@@ -11,7 +11,18 @@
     background-color: var(--background-primary);
     position: relative;
     /* 强制覆盖 Obsidian 的选区颜色变量 */
-    --text-selection: #FF5555;
+    --code-space-selection-bg: hsla(var(--interactive-accent-hsl), 0.64);
+    --code-space-selection-fg: var(--text-on-accent);
+    --code-space-selection-bg-active: hsla(var(--interactive-accent-hsl), 0.7);
+    --code-space-search-bg: hsla(var(--interactive-accent-hsl), 0.22);
+    --code-space-search-outline: hsla(var(--interactive-accent-hsl), 0.5);
+    --code-space-search-current-bg: hsla(var(--interactive-accent-hsl), 0.8);
+    --code-space-search-current-fg: var(--text-on-accent);
+    --code-space-search-current-outline: hsla(var(--interactive-accent-hsl), 0.82);
+    --code-space-search-current-shadow: hsla(var(--interactive-accent-hsl), 0.28);
+    --code-space-selection-match-bg: hsla(var(--interactive-accent-hsl), 0.18);
+    --code-space-selection-match-outline: hsla(var(--interactive-accent-hsl), 0.42);
+    --text-selection: var(--code-space-selection-bg);
     --text-highlight-bg: rgba(255, 215, 0, 0.6);
 }
 
@@ -26,15 +37,15 @@ body .code-space-container .cm-selectionBackground,
 body .code-space-container ::selection,
 body .code-space-container .cm-content ::selection,
 body .code-space-container .cm-line::selection {
-    background-color: #FF5555 !important;
-    color: #FFFFFF !important;
+    background-color: var(--code-space-selection-bg) !important;
+    color: var(--code-space-selection-fg) !important;
 }
 
 /* 活动行内的选区也必须是淡红色 */
 body .code-space-container .cm-activeLine .cm-selectionBackground,
 body .code-space-container .cm-activeLine::selection {
-    background-color: #FF5555 !important;
-    color: #FFFFFF !important;
+    background-color: var(--code-space-selection-bg-active) !important;
+    color: var(--code-space-selection-fg) !important;
 }
 
 .code-space-container .cm-editor {
@@ -73,7 +84,7 @@ body .code-space-container .cm-activeLine::selection {
 
 /* 优化选区 */
 .code-space-container .cm-selectionBackground {
-    background-color: hsla(var(--interactive-accent-hsl), 0.2) !important;
+    background-color: var(--code-space-selection-bg) !important;
 }
 
 /* 优化滚动条 */
@@ -767,7 +778,10 @@ body .code-space-container .cm-activeLine::selection {
 .cmt-link { color: var(--text-accent, #2d7fba) !important; text-decoration: underline; }
 .theme-light .cm-content { caret-color: #000000; }
 .theme-dark .cm-content { caret-color: #ffffff; }
-.cm-selectionBackground { background-color: var(--text-selection) !important; }
+.code-space-container .cm-selectionBackground,
+.code-embed-editor .cm-selectionBackground {
+    background-color: var(--text-selection) !important;
+}
 .cm-activeLine { background-color: var(--background-modifier-active-hover) !important; }
 
 /* =================================================================
@@ -819,6 +833,18 @@ body .code-space-container .cm-activeLine::selection {
 }
 
 .code-embed-editor {
+    --code-space-selection-bg: hsla(var(--interactive-accent-hsl), 0.64);
+    --code-space-selection-fg: var(--text-on-accent);
+    --code-space-selection-bg-active: hsla(var(--interactive-accent-hsl), 0.7);
+    --code-space-search-bg: hsla(var(--interactive-accent-hsl), 0.22);
+    --code-space-search-outline: hsla(var(--interactive-accent-hsl), 0.5);
+    --code-space-search-current-bg: hsla(var(--interactive-accent-hsl), 0.8);
+    --code-space-search-current-fg: var(--text-on-accent);
+    --code-space-search-current-outline: hsla(var(--interactive-accent-hsl), 0.82);
+    --code-space-search-current-shadow: hsla(var(--interactive-accent-hsl), 0.28);
+    --code-space-selection-match-bg: hsla(var(--interactive-accent-hsl), 0.18);
+    --code-space-selection-match-outline: hsla(var(--interactive-accent-hsl), 0.42);
+    --text-selection: var(--code-space-selection-bg);
     background-color: var(--background-primary);
     text-align: left; /* 确保左对齐 */
     font-family: var(--font-monospace), 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Source Code Pro', Consolas, 'Courier New', monospace;
@@ -1112,38 +1138,48 @@ body.pdf-export .code-embed-static-fallback pre {
 
 /* 搜索匹配高亮 - 金黄色 (普通匹配) */
 .code-space-container .cm-searchMatch {
-    background-color: #FFD700 !important;
+    background-color: var(--code-space-search-bg) !important;
     border-radius: 2px;
-    outline: 2px solid #FFD700;
-    color: #000000 !important;
+    outline: 1px solid var(--code-space-search-outline);
+    color: inherit !important;
 }
 
 /* 当前选中的搜索匹配 - 淡红色 (当前焦点) */
 .code-space-container .cm-searchMatch-selected {
-    background-color: #FF5555 !important;
+    background-color: var(--code-space-search-current-bg) !important;
     border-radius: 2px;
-    outline: 3px solid #FF5555;
-    box-shadow: 0 0 8px rgba(255, 85, 85, 0.8);
-    color: #FFFFFF !important;
+    outline: 2px solid var(--code-space-search-current-outline);
+    box-shadow: 0 0 0 1px hsla(var(--interactive-accent-hsl), 0.12),
+                0 0 8px var(--code-space-search-current-shadow);
+    color: var(--code-space-search-current-fg) !important;
 }
 
 .theme-dark .code-space-container .cm-searchMatch {
-    background-color: #FFD700 !important;
-    outline: 2px solid #FFD700;
-    color: #000000 !important;
+    background-color: var(--code-space-search-bg) !important;
+    outline: 1px solid var(--code-space-search-outline);
+    color: inherit !important;
 }
 
 .theme-dark .code-space-container .cm-searchMatch-selected {
-    background-color: #FF5555 !important;
-    outline: 3px solid #FF5555;
-    box-shadow: 0 0 10px rgba(255, 85, 85, 1);
-    color: #FFFFFF !important;
+    background-color: var(--code-space-search-current-bg) !important;
+    outline: 2px solid var(--code-space-search-current-outline);
+    box-shadow: 0 0 0 1px hsla(var(--interactive-accent-hsl), 0.12),
+                0 0 8px var(--code-space-search-current-shadow);
+    color: var(--code-space-search-current-fg) !important;
 }
 
 /* 其他相同的词 - 金黄色 */
 .code-space-container .cm-selectionMatch {
-    background-color: rgba(255, 215, 0, 0.6) !important;
-    color: #000000 !important;
+    background-color: var(--code-space-selection-match-bg) !important;
+    box-shadow: inset 0 0 0 1px var(--code-space-selection-match-outline);
+    color: inherit !important;
+    border-radius: 2px;
+}
+
+.code-space-container .cm-selectionMatch-main {
+    background-color: var(--code-space-selection-bg) !important;
+    color: var(--code-space-selection-fg) !important;
+    box-shadow: none !important;
     border-radius: 2px;
 }
 

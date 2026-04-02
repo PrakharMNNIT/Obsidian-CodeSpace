@@ -606,34 +606,34 @@ const baseTheme = EditorView.theme({
 		caretColor: "var(--text-accent) !important",
 		padding: "10px 0"
 	},
-	// 搜索选中文本的淡红色高亮 - 最高优先级
+	// Keep text selection aligned with the current Obsidian accent color.
 	"&.cm-focused .cm-selectionBackground": {
-		backgroundColor: "#FF5555 !important",
-		color: "#FFFFFF !important"
+		backgroundColor: "var(--code-space-selection-bg) !important",
+		color: "var(--code-space-selection-fg) !important"
 	},
 	".cm-selectionBackground": {
-		backgroundColor: "#FF5555 !important",
-		color: "#FFFFFF !important"
+		backgroundColor: "var(--code-space-selection-bg) !important",
+		color: "var(--code-space-selection-fg) !important"
 	},
 	".cm-content ::selection": {
-		backgroundColor: "#FF5555 !important",
-		color: "#FFFFFF !important"
+		backgroundColor: "var(--code-space-selection-bg) !important",
+		color: "var(--code-space-selection-fg) !important"
 	},
 	"&.cm-focused .cm-content ::selection": {
-		backgroundColor: "#FF5555 !important",
-		color: "#FFFFFF !important"
+		backgroundColor: "var(--code-space-selection-bg) !important",
+		color: "var(--code-space-selection-fg) !important"
 	},
 	"::selection": {
-		backgroundColor: "#FF5555 !important",
-		color: "#FFFFFF !important"
+		backgroundColor: "var(--code-space-selection-bg) !important",
+		color: "var(--code-space-selection-fg) !important"
 	},
 	"::moz-selection": {
-		backgroundColor: "#FF5555 !important",
-		color: "#FFFFFF !important"
+		backgroundColor: "var(--code-space-selection-bg) !important",
+		color: "var(--code-space-selection-fg) !important"
 	},
 	".cm-line::selection": {
-		backgroundColor: "#FF5555 !important",
-		color: "#FFFFFF !important"
+		backgroundColor: "var(--code-space-selection-bg) !important",
+		color: "var(--code-space-selection-fg) !important"
 	},
 	".cm-gutters": {
 		backgroundColor: "var(--background-primary) !important",
@@ -652,14 +652,14 @@ const baseTheme = EditorView.theme({
 		padding: "0 8px !important",
 		backgroundColor: "var(--background-primary) !important",
 	},
-	// 确保活动行内的选区也是淡红色
+	// Make the active-line selection slightly stronger for focus.
 	".cm-activeLine .cm-selectionBackground": {
-		backgroundColor: "#FF5555 !important",
-		color: "#FFFFFF !important"
+		backgroundColor: "var(--code-space-selection-bg-active) !important",
+		color: "var(--code-space-selection-fg) !important"
 	},
 	".cm-activeLine::selection": {
-		backgroundColor: "#FF5555 !important",
-		color: "#FFFFFF !important"
+		backgroundColor: "var(--code-space-selection-bg-active) !important",
+		color: "var(--code-space-selection-fg) !important"
 	},
 	// 搜索面板样式 - Obsidian 原生风格
 	".cm-panel.cm-search": {
@@ -734,23 +734,30 @@ const baseTheme = EditorView.theme({
 	},
 	// 搜索匹配高亮 - 金黄色 (普通匹配)
 	".cm-searchMatch": {
-		backgroundColor: "#FFD700 !important",
+		backgroundColor: "var(--code-space-search-bg) !important",
 		borderRadius: "2px",
-		outline: "2px solid #FFD700",
-		color: "#000000 !important"
+		outline: "1px solid var(--code-space-search-outline)",
+		color: "inherit !important"
 	},
-	// 当前选中的搜索匹配 - 淡红色 (当前焦点)
+	// Current search hit uses a stronger accent-tinted highlight.
 	".cm-searchMatch-selected": {
-		backgroundColor: "#FF5555 !important",
+		backgroundColor: "var(--code-space-search-current-bg) !important",
 		borderRadius: "2px",
-		outline: "3px solid #FF5555",
-		boxShadow: "0 0 8px rgba(255, 85, 85, 0.8)",
-		color: "#FFFFFF !important"
+		outline: "2px solid var(--code-space-search-current-outline)",
+		boxShadow: "0 0 0 1px hsla(var(--interactive-accent-hsl), 0.12), 0 0 8px var(--code-space-search-current-shadow)",
+		color: "var(--code-space-search-current-fg) !important"
 	},
 	// 其他相同的词 - 金黄色
 	".cm-selectionMatch": {
-		backgroundColor: "rgba(255, 215, 0, 0.6) !important",
-		color: "#000000 !important",
+		backgroundColor: "var(--code-space-selection-match-bg) !important",
+		boxShadow: "inset 0 0 0 1px var(--code-space-selection-match-outline)",
+		color: "inherit !important",
+		borderRadius: "2px"
+	},
+	".cm-selectionMatch-main": {
+		backgroundColor: "var(--code-space-selection-bg) !important",
+		color: "var(--code-space-selection-fg) !important",
+		boxShadow: "none !important",
 		borderRadius: "2px"
 	}
 });

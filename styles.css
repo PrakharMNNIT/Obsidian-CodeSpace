@@ -52,7 +52,11 @@ body .code-space-container .cm-activeLine::selection {
     flex: 1 1 auto;
     min-height: 0;
     height: auto !important;
-    font-family: var(--font-monospace), 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Source Code Pro', Consolas, 'Courier New', monospace;
+}
+
+.code-space-container .cm-editor .cm-scroller,
+.code-embed-container .cm-editor .cm-scroller {
+    font-family: var(--font-monospace), "JetBrains Mono", "Fira Code", "Cascadia Code", "Source Code Pro", Consolas, "Courier New", monospace !important;
     font-feature-settings: "liga" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
 }
@@ -990,15 +994,15 @@ body .code-space-container .cm-activeLine::selection {
 		break-inside: avoid;
 		border: 1px solid var(--background-modifier-border);
 	}
-	
+
 	.code-embed-editor {
 		display: none !important;
 	}
-	
+
 	.code-embed-static-fallback {
 		display: block !important;
 	}
-	
+
 	.code-embed-static-fallback pre {
 		max-height: none;
 		overflow: visible;

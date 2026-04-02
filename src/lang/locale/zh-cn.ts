@@ -119,7 +119,7 @@ export default {
     NOTICE_MOVE_FAIL: '移动文件失败',
 
     // Embed
-    EMBED_TOOLTIP_OPEN: '点击打开文件',
+    EMBED_TOOLTIP_OPEN: '点击打开文件 (Ctrl 新标签 | Ctrl+Shift 新窗口 | Ctrl+Alt 分屏)',
     EMBED_LINES_SHOWING: '显示 {0} / {1} 行',
     EMBED_LINES_TOTAL: '共 {0} 行',
     EMBED_LINES_RANGE: '第 {0}-{1} 行 / 共 {2} 行',

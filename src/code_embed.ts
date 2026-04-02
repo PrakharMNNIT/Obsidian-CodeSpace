@@ -965,6 +965,22 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	header.addEventListener("click", (e) => {
 		e.stopPropagation();
 		e.preventDefault();
+		const modKey = e.metaKey || e.ctrlKey;
+		if (modKey && e.shiftKey && !e.altKey) {
+			// 新窗口 (Ctrl+Shift)
+			void plugin.app.workspace.getLeaf("window").openFile(tFile);
+			return;
+		}
+		if (modKey && !e.shiftKey && e.altKey) {
+			// 分栏 (Ctrl+Alt)
+			void plugin.app.workspace.getLeaf("split").openFile(tFile);
+			return;
+		}
+		if (modKey && !e.shiftKey && !e.altKey) {
+			// 新标签 (Ctrl)
+			void plugin.app.workspace.getLeaf("tab").openFile(tFile);
+			return;
+		}
 		void plugin.app.workspace.getLeaf(false).openFile(tFile);
 	});
 

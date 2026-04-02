@@ -2,7 +2,7 @@
 
 <h1 align="center">
     Professional code file support for Obsidian
-    <p align='center'><img src='img\Code.webp' width=80%></p> 
+    <p align='center'><img src='docs\img\Code.webp' width=80%></p> 
     <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
     <img alt="GitHub stars" src="https://img.shields.io/github/stars/unlinearity/Obsidian-Codespace?style=for-the-badge">
     <img alt="License" src="https://img.shields.io/github/license/unlinearity/Obsidian-Codespace?style=for-the-badge">
@@ -28,7 +28,6 @@ Obsidian does not support **viewing, managing, and editing code files** out of t
 3. **Embedding space**: Deeply integrates with Obsidian's native features to support references, embedded previews of code files, and native PDF export as real code blocks.
 4. **Mount space**: Mount external folders into the Vault via system symlinks/junctions for cross-project code management.
 
-
 <p align="center">
   <img src="https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=date&legend=top-left" alt="Star History Chart">
 </p>
@@ -45,7 +44,7 @@ Provides a visual dashboard for unified indexing and management of code files wi
 - **Multi-dimensional dynamic filtering**: Filter by file extension and search by filename in real time.
 - **Standard file operations**: Built-in Obsidian-supported file operations like rename, move, delete, and open in external apps.
 
-<p align='center'><img src='img\pre1.png' width=95%></p> 
+<p align='center'><img src='docs\img\pre1.png' width=95%></p> 
 
 
 ### 2. Professional code editing space
@@ -58,7 +57,7 @@ Provides an IDE-like environment for code viewing and editing.
 - **Basic editing helpers**: Auto indentation, bracket matching, code folding, and line numbers.
 - **Interaction optimizations**: Ctrl+wheel font scaling and a floating search button for quick access.
 
-<p align='center'><img src='img\pre22.png' width=95%></p> 
+<p align='center'><img src='docs\img\pre22.png' width=95%></p> 
 
 ### 3. Obsidian native embedding space
 
@@ -72,7 +71,7 @@ Elegantly embed and preview code in Markdown, allowing you to embed specific sni
 - **Native PDF export**: Use Obsidian's official **Export to PDF** and code file references will be exported as real code blocks instead of gray file cards.
 - **Broader host compatibility**: Embedded code previews behave more reliably in reading mode, pop-out windows, and other hosts that reuse Obsidian's Markdown render pipeline.
 
-<p align='center'><img src='img\pre3.png' width=95%></p> 
+<p align='center'><img src='docs\img\pre3.png' width=95%></p> 
 
 **Supported embed syntax:**
 
@@ -93,7 +92,7 @@ Elegantly embed and preview code in Markdown, allowing you to embed specific sni
 
 Tip: When a note contains code file embeds, export it with Obsidian's official **Export to PDF**. Code Space keeps those embeds as real code blocks in the final PDF while preserving Obsidian's native layout and pagination.
 
-<p align='center'><img src='img\pre8.png' width=90%></p> 
+<p align='center'><img src='docs\img\pre8.png' width=90%></p> 
 
 ### 4. External mount space (desktop only)
 
@@ -104,7 +103,7 @@ Break through Vault boundaries to manage external project code.
 - **Bidirectional sync**: External file modifications automatically sync to Obsidian, and edits in Obsidian are written back to the original location
 - **Cross-project collaboration**: Manage distributed code repositories directly without copying project code into the Vault
 
-<p align='center'><img src='img\pre7.png' width=98%></p> 
+<p align='center'><img src='docs\img\pre7.png' width=98%></p> 
 
 **Usage:**
 1. Create symlinks/junctions in your Vault pointing to external folders
@@ -148,7 +147,7 @@ Note: External mounts allow access to files outside the Vault. Only mount folder
 - Code files open in the Code Space editor interface
 - Binary files (e.g., images or PDFs) open with Obsidian's native viewer. You can even use it to manage attachments like PDFs 
 
-<p align='center'><img src='img\pre4.png' width=95%></p> 
+<p align='center'><img src='docs\img\pre4.png' width=95%></p> 
 
 ### 2. Manually addable extensions (also support syntax highlighting)
 
@@ -189,7 +188,7 @@ The following files can also be managed in the Code Space dashboard (rename, mov
 
 ### 1. Plugin commands
 
-<p align='center'><img src='img\pre5.png' width=98%></p> 
+<p align='center'><img src='docs\img\pre5.png' width=98%></p> 
 
 | Command path | Function |
 |---------|------|
@@ -255,7 +254,7 @@ The following files can also be managed in the Code Space dashboard (rename, mov
 
 Install the BRAT plugin first. When adding a beta plugin in settings, enter this repository address: `https://github.com/UNLINEARITY/Obsidian-CodeSpace` and select the latest version.
 
-<p align='center'><img src='img\pre6.png' width=90%></p> 
+<p align='center'><img src='docs\img\pre6.png' width=90%></p> 
 
 ---
 

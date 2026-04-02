@@ -2,7 +2,7 @@
 
 <h1 align="center">
     为 Obsidian 提供专业的代码文件支持
-    <p align='center'><img src='img\Code.webp' width=80%></p> 
+    <p align='center'><img src='docs\img\Code.webp' width=80%></p> 
     <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
     <img alt="GitHub stars" src="https://img.shields.io/github/stars/unlinearity/Obsidian-Codespace?style=for-the-badge">
     <img alt="License" src="https://img.shields.io/github/license/unlinearity/Obsidian-Codespace?style=for-the-badge">
@@ -45,7 +45,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 - **多维动态过滤**：支持按文件扩展名筛选和按文件名实时搜索。
 - **标准文件操作**：集成重命名、移动、删除及外部应用打开等obsidian原生支持的文件管理功能。
 
-<p align='center'><img src='img\pre1.png' width=95%></p> 
+<p align='center'><img src='docs\img\pre1.png' width=95%></p> 
 
 
 ### 2. 专业代码编辑空间
@@ -58,7 +58,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 - **基础编辑辅助**：支持自动缩进、括号补全、代码折叠及行号显示。
 - **交互优化**：支持 Ctrl+滚轮缩放字体，并提供浮动搜索按钮以快速触达查找功能。
 
-<p align='center'><img src='img\pre22.png' width=95%></p> 
+<p align='center'><img src='docs\img\pre22.png' width=95%></p> 
 
 ### 3. Obsidian 原生嵌入空间
 
@@ -72,7 +72,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 - **原生 PDF 导出**：直接使用 Obsidian 官方 **Export to PDF**，代码文件引用会导出为真实代码块，同时保留官方版式、分页和导出设置能力
 - **宿主兼容性**：阅读模式、弹出窗口，以及复用 Obsidian 渲染链的宿主场景下，代码嵌入预览更加稳定
 
-<p align='center'><img src='img\pre3.png' width=95%></p> 
+<p align='center'><img src='docs\img\pre3.png' width=95%></p> 
 
 **支持的嵌入引用语法：**
 
@@ -93,7 +93,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 > 从 `2.0.0` 开始，导出包含代码引用的 Markdown 文档时，可以直接使用 Obsidian 官方 **Export to PDF**。 
 
-<p align='center'><img src='img\pre8.png' width=90%></p> 
+<p align='center'><img src='docs\img\pre8.png' width=90%></p> 
 
 ### 4. 外部挂载空间（仅桌面端）
 
@@ -104,7 +104,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 - **双向同步**：外部文件的修改会自动同步到 Obsidian，Obsidian 内的编辑也会写回原始位置
 - **跨项目协作**：无需将项目代码复制到 Vault，直接管理分布在各处的代码仓库
 
-<p align='center'><img src='img\pre7.png' width=95%></p> 
+<p align='center'><img src='docs\img\pre7.png' width=95%></p> 
 
 **使用方式**：
 1. 在 Vault 内创建指向外部文件夹的符号链接/目录联接
@@ -148,7 +148,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 - 如果是代码文件，会通过 Code Space 的代码界面打开
 - 如果是二进制文件（例如图片或 PDF），会调用 Obsidian 原生的查看器进行打开，你甚至可以用来管理 PDF 等附件 
 
-<p align='center'><img src='img\pre4.png' width=98%></p> 
+<p align='center'><img src='docs\img\pre4.png' width=98%></p> 
 
 ### 2. 可通过设置手动添加的扩展名（同样支持语法高亮）
 
@@ -189,7 +189,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 ### 插件命令
 
-<p align='center'><img src='img\pre5.png' width=98%></p> 
+<p align='center'><img src='docs\img\pre5.png' width=98%></p> 
 
 | 命令路径 | 功能 |
 |---------|------|
@@ -255,7 +255,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 先下载好BRAT插件，设置中添加Beta插件时，填写本仓库地址：https://github.com/UNLINEARITY/Obsidian-CodeSpace ，选择最新版本。
 
-<p align='center'><img src='img\pre6.png' width=85%></p> 
+<p align='center'><img src='docs\img\pre6.png' width=85%></p> 
 
 ---
 

@@ -151,11 +151,15 @@ Follow Obsidian's **Developer Policies** and **Plugin Guidelines**. In particula
 - Provide defaults and validation in settings.
 - Write idempotent code paths so reload/unload doesn't leak listeners or intervals.
 - Use `this.register*` helpers for everything that needs cleanup.
+- When you need the user's approval, confirmation, or a binary decision, ask in a standalone blocking message.
+- Keep progress updates and exploratory commentary non-blocking. Do not hide a real approval request inside a status update or a long planning message.
+- If the environment supports separate message types, use the non-blocking channel only for progress updates and use the blocking/final prompt when waiting for the user's reply. This helps external notification hooks fire reliably.
 
 **Don't**
 - Introduce network calls without an obvious user-facing reason and documentation.
 - Ship features that require cloud services without clear disclosure and explicit opt-in.
 - Store or transmit vault contents unless essential and consented.
+- **Do not edit `log.md` or `releases/*.md` unless the user explicitly asks for it.**
 
 ## Common tasks
 

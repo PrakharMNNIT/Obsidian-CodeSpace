@@ -638,6 +638,61 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 		}
 	});
 
+	// Listen for file changes so we can update embeds when their source files change on disk.
+	plugin.registerEvent(
+		plugin.app.vault.on("modify", (changedFile) => {
+			// 遍历所有文档，查找嵌入了变更文件的嵌入块
+			plugin.app.workspace.iterateAllLeaves((leaf) => {
+				const view = leaf.view as unknown as {
+					containerEl?: HTMLElement
+					contentEl?: HTMLElement
+					file?: TFile
+				} | null
+				if (!view) return
+
+				const possibleContainers = [
+					view.contentEl,
+					view.containerEl,
+					view.containerEl?.querySelector(".markdown-preview-view"),
+					view.containerEl?.querySelector(".markdown-source-view"),
+				]
+
+				for (const container of possibleContainers) {
+					if (!container) continue
+
+					const embeds = (container as HTMLElement).querySelectorAll(".file-embed")
+
+					for (const embedEl of Array.from(embeds)) {
+						const embed = embedEl as HTMLElement
+
+						// 检查这个嵌入块是否引用了变更的文件
+						const titleEl = embed.querySelector(".file-embed-title")
+						const internalLink = titleEl?.querySelector<HTMLAnchorElement>("a.internal-link")
+						const linkPath =
+							internalLink?.getAttribute("data-href") ||
+							titleEl?.getAttribute("data-href") ||
+							embed.getAttribute("data-href") ||
+							embed.getAttribute("data-src") ||
+							embed.getAttribute("src")
+
+						if (!linkPath) continue
+
+						// 解析链接路径
+						const sourcePath = resolveSourcePathForEmbed(embed, plugin) || view.file?.path || ""
+						const destFile = plugin.app.metadataCache.getFirstLinkpathDest(linkPath, sourcePath)
+
+						// 如果嵌入的目标文件就是变更的文件，重新渲染
+						if (destFile?.path === changedFile.path) {
+							disposeCodeEmbed(embed)
+							rememberSourcePath(embed, sourcePath)
+							scheduleProcessCodeEmbed(embed, plugin, sourcePath)
+						}
+					}
+				}
+			})
+		}),
+	);
+
 	// Re-process embeds when layout changes (includes switching between edit/reading modes).
 	// Reading mode uses a different rendering engine and may not trigger post processors reliably.
 	plugin.registerEvent(

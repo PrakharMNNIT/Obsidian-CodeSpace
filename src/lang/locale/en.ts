@@ -64,6 +64,7 @@ export default {
     VIEW_TITLE: 'Code space',
     BUTTON_OPEN_SETTINGS: 'Open settings',
     BUTTON_CREATE_FILE: 'Create code file',
+    BUTTON_MANAGE_IGNORED_FILES: 'Manage ignored files',
     SUBTITLE_MANAGED_FILES: 'Code files managed',
     TOOLBAR_SEARCH_PLACEHOLDER: 'Search files...',
     TOOLBAR_FILTER_FOLDER_ALL: 'All folders',
@@ -97,7 +98,13 @@ export default {
     MENU_MOVE: 'Move file to',
     MENU_OPEN_DEFAULT: 'Open in default app',
     MENU_REVEAL: 'Reveal in navigation',
+    MENU_IGNORE_FILE: 'Ignore this file',
     MENU_DELETE: 'Delete',
+
+    // Ignore manager
+    IGNORE_MANAGER_TITLE: 'Manage ignored files',
+    IGNORE_MANAGER_EMPTY: 'No ignored files.',
+    IGNORE_MANAGER_REMOVE: 'Remove',
 
     // Commands
     CMD_OPEN_DASHBOARD: 'Open dashboard',
@@ -117,6 +124,8 @@ export default {
     NOTICE_RENAME_FAIL: 'Failed to rename file',
     NOTICE_MOVE_SUCCESS: 'Moved to',
     NOTICE_MOVE_FAIL: 'Failed to move file',
+    NOTICE_IGNORE_SUCCESS: 'File ignored.',
+    NOTICE_UNIGNORE_SUCCESS: 'File restored to dashboard.',
 
     // Embed
     EMBED_TOOLTIP_OPEN: 'Click to open file (Ctrl: New Tab | Ctrl+Shift: New Window | Ctrl+Alt: Split Screen)',

@@ -155,4 +155,11 @@ export default {
     FOLDER_FILTER_APPLY: '应用',
     FOLDER_FILTER_EMPTY: '未找到文件夹。',
     FOLDER_FILTER_SELECTED: '已选择：{0}',
+    BUTTON_MANAGE_IGNORED_FILES: '管理忽略文件',
+    MENU_IGNORE_FILE: '忽略此文件',
+    IGNORE_MANAGER_TITLE: '忽略管理',
+    IGNORE_MANAGER_EMPTY: '当前没有已忽略的文件。',
+    IGNORE_MANAGER_REMOVE: '移除',
+    NOTICE_IGNORE_SUCCESS: '已忽略文件。',
+    NOTICE_UNIGNORE_SUCCESS: '已恢复到面板。',
 };

@@ -193,8 +193,22 @@ export class CodeDashboardView extends ItemView {
 				}
 			});
 
+		new ButtonComponent(titleGroup)
+			.setIcon("eye-off")
+			.setTooltip(t("BUTTON_MANAGE_IGNORED_FILES"))
+			.setClass("clickable-icon")
+			.onClick((e) => {
+				e.stopPropagation();
+				if (this.plugin) {
+					void this.plugin.openIgnoreManager();
+				}
+			});
+
 		const codeExtensions = this.getManagedExtensions();
-		let files = this.app.vault.getFiles().filter(f => codeExtensions.includes(f.extension.toLowerCase()));
+		let files = this.app.vault.getFiles().filter((file) =>
+			codeExtensions.includes(file.extension.toLowerCase()) &&
+			!this.plugin?.isIgnoredFile(file)
+		);
 
 		headerContainer.createEl("p", { text: `${files.length} ${t('SUBTITLE_MANAGED_FILES')}`, cls: "code-dashboard-subtitle" });
 
@@ -321,6 +335,10 @@ export class CodeDashboardView extends ItemView {
 
 		// Filter
 		let files = allFiles.filter(f => {
+			if (this.plugin?.isIgnoredFile(f)) {
+				return false;
+			}
+
 			const q = this.state.searchQuery.toLowerCase();
 			const matchQuery = f.name.toLowerCase().includes(q) || f.path.toLowerCase().includes(q);
 			const folderPath = f.parent?.path ?? "/";
@@ -451,6 +469,19 @@ export class CodeDashboardView extends ItemView {
 		}));
 
 		menu.addSeparator();
+
+		menu.addItem((item) => item.setTitle(t("MENU_IGNORE_FILE")).setIcon("eye-off").onClick(() => {
+			if (!this.plugin) {
+				return;
+			}
+
+			void (async () => {
+				const changed = await this.plugin.ignoreFile(file);
+				if (changed) {
+					new Notice(t("NOTICE_IGNORE_SUCCESS"));
+				}
+			})();
+		}));
 
 		menu.addItem((item) => item.setTitle(t('MENU_DELETE')).setIcon("trash").setWarning(true).onClick(async () => {
 			try {

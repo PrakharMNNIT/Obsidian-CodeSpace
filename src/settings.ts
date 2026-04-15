@@ -151,6 +151,7 @@ export interface CodeSpaceSettings {
 	enableExternalMounts: boolean;
 	externalMounts: ExternalMount[];
 	externalMountLinkType: ExternalMountLinkType;
+	ignoredFiles: string[];
 }
 
 export const DEFAULT_SETTINGS: CodeSpaceSettings = {
@@ -170,7 +171,8 @@ export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 	},
 	enableExternalMounts: true,
 	externalMounts: [],
-	externalMountLinkType: "auto"
+	externalMountLinkType: "auto",
+	ignoredFiles: []
 };
 
 export class CodeSpaceSettingTab extends PluginSettingTab {

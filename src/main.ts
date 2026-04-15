@@ -1,7 +1,8 @@
-import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App, normalizePath } from 'obsidian';
+import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App, TFile, normalizePath } from 'obsidian';
 import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
+import { IgnoreManagerModal } from "./ignore_manager_modal";
 import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab, FolderSuggestModal } from "./settings";
 import { registerCodeEmbedProcessor } from "./code_embed";
 import { registerNativePdfExportPatch } from "./native_pdf_export_patch";
@@ -145,6 +146,18 @@ export default class CodeSpacePlugin extends Plugin {
 			this.updateCSSVariables();
 		}));
 
+		this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
+			if (file instanceof TFile) {
+				void this.handleIgnoredFileRename(file, oldPath);
+			}
+		}));
+
+		this.registerEvent(this.app.vault.on("delete", (file) => {
+			if (file instanceof TFile) {
+				void this.handleIgnoredFileDelete(file);
+			}
+		}));
+
 		this.addRibbonIcon('code-glyph', t('RIBBON_OPEN_DASHBOARD'), () => {
 			void this.activateDashboard();
 		});
@@ -284,6 +297,7 @@ export default class CodeSpacePlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as CodeSpaceSettings);
+		this.settings.ignoredFiles = this.normalizeIgnoredFiles(this.settings.ignoredFiles);
 	}
 
 	async saveSettings() {
@@ -296,12 +310,7 @@ export default class CodeSpacePlugin extends Plugin {
 		this.registerCodeExtensions();
 
 		// 刷新 Dashboard (更新后缀列表)
-		const dashboardLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_DASHBOARD);
-		dashboardLeaves.forEach(leaf => {
-			if (leaf.view instanceof CodeDashboardView) {
-				leaf.view.render();
-			}
-		});
+		this.refreshDashboardViews();
 
 		// 刷新编辑器 (更新行号设置)
 		const editorLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_SPACE);
@@ -314,6 +323,106 @@ export default class CodeSpacePlugin extends Plugin {
 
 	async saveDashboardState() {
 		await this.saveData(this.settings);
+	}
+
+	getIgnoredFiles(): string[] {
+		return [...this.settings.ignoredFiles];
+	}
+
+	isIgnoredFile(fileOrPath: TFile | string): boolean {
+		const path = typeof fileOrPath === "string" ? fileOrPath : fileOrPath.path;
+		return this.settings.ignoredFiles.includes(this.normalizeIgnoredPath(path));
+	}
+
+	async ignoreFile(fileOrPath: TFile | string): Promise<boolean> {
+		const normalizedPath = this.normalizeIgnoredPath(typeof fileOrPath === "string" ? fileOrPath : fileOrPath.path);
+		if (!normalizedPath || this.settings.ignoredFiles.includes(normalizedPath)) {
+			return false;
+		}
+
+		this.settings.ignoredFiles = this.normalizeIgnoredFiles([...this.settings.ignoredFiles, normalizedPath]);
+		await this.persistIgnoredFiles();
+		return true;
+	}
+
+	async unignoreFile(fileOrPath: TFile | string): Promise<boolean> {
+		const normalizedPath = this.normalizeIgnoredPath(typeof fileOrPath === "string" ? fileOrPath : fileOrPath.path);
+		if (!normalizedPath || !this.settings.ignoredFiles.includes(normalizedPath)) {
+			return false;
+		}
+
+		this.settings.ignoredFiles = this.settings.ignoredFiles.filter((path) => path !== normalizedPath);
+		await this.persistIgnoredFiles();
+		return true;
+	}
+
+	async pruneIgnoredFiles(): Promise<boolean> {
+		const existingPaths = new Set(this.app.vault.getFiles().map((file) => file.path));
+		const filtered = this.settings.ignoredFiles.filter((path) => existingPaths.has(path));
+		if (filtered.length === this.settings.ignoredFiles.length) {
+			return false;
+		}
+
+		this.settings.ignoredFiles = this.normalizeIgnoredFiles(filtered);
+		await this.persistIgnoredFiles();
+		return true;
+	}
+
+	async openIgnoreManager() {
+		await this.pruneIgnoredFiles();
+		new IgnoreManagerModal(this.app, this).open();
+	}
+
+	private async handleIgnoredFileRename(file: TFile, oldPath: string): Promise<void> {
+		const normalizedOldPath = this.normalizeIgnoredPath(oldPath);
+		if (!this.settings.ignoredFiles.includes(normalizedOldPath)) {
+			return;
+		}
+
+		this.settings.ignoredFiles = this.normalizeIgnoredFiles(
+			this.settings.ignoredFiles.map((path) => path === normalizedOldPath ? file.path : path)
+		);
+		await this.persistIgnoredFiles();
+	}
+
+	private async handleIgnoredFileDelete(file: TFile): Promise<void> {
+		if (!this.isIgnoredFile(file)) {
+			return;
+		}
+
+		this.settings.ignoredFiles = this.settings.ignoredFiles.filter((path) => path !== file.path);
+		await this.persistIgnoredFiles();
+	}
+
+	private normalizeIgnoredPath(path: string): string {
+		return normalizePath(path).replace(/^\/+/, "");
+	}
+
+	private normalizeIgnoredFiles(paths: string[] | undefined): string[] {
+		if (!Array.isArray(paths)) {
+			return [];
+		}
+
+		return Array.from(new Set(
+			paths
+				.filter((path): path is string => typeof path === "string")
+				.map((path) => this.normalizeIgnoredPath(path))
+				.filter(Boolean)
+		)).sort((a, b) => a.localeCompare(b));
+	}
+
+	private async persistIgnoredFiles(): Promise<void> {
+		await this.saveData(this.settings);
+		this.refreshDashboardViews();
+	}
+
+	private refreshDashboardViews(): void {
+		const dashboardLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_DASHBOARD);
+		dashboardLeaves.forEach((leaf) => {
+			if (leaf.view instanceof CodeDashboardView) {
+				leaf.view.render();
+			}
+		});
 	}
 
 	private getKnownDocuments(): Document[] {

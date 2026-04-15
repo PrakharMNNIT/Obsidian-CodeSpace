@@ -459,13 +459,13 @@ const LANGUAGE_PACKAGES: Record<string, Extension> = {
 	'cc': cpp(),
 	'cxx': cpp(),
 	// JavaScript/TypeScript/JSON
-	'js': javascript({ jsx: true }),
-	'ts': javascript({ jsx: true }),
+	'js': javascript(),
+	'ts': javascript({ typescript: true }),
 	'jsx': javascript({ jsx: true }),
-	'tsx': javascript({ jsx: true }),
+	'tsx': javascript({ typescript: true, jsx: true }),
 	'json': javascript({ jsx: true }),
-	'mjs': javascript({ jsx: true }),
-	'cjs': javascript({ jsx: true }),
+	'mjs': javascript(),
+	'cjs': javascript(),
 	// HTML
 	'html': html(),
 	'htm': html(),

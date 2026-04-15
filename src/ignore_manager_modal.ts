@@ -1,4 +1,4 @@
-import { App, ButtonComponent, Modal, Notice } from "obsidian";
+import { App, ButtonComponent, Modal, Notice, TFile } from "obsidian";
 import CodeSpacePlugin from "./main";
 import { t } from "./lang/helpers";
 
@@ -47,13 +47,34 @@ export class IgnoreManagerModal extends Modal {
 				text: this.getParentPath(path)
 			});
 
-			new ButtonComponent(itemEl)
+			const actionsEl = itemEl.createDiv({ cls: "ignore-manager-actions" });
+			new ButtonComponent(actionsEl)
+				.setButtonText(t("IGNORE_MANAGER_OPEN"))
+				.setClass("ignore-manager-open-button")
+				.onClick(() => {
+					void this.openIgnoredFile(path);
+				});
+
+			new ButtonComponent(actionsEl)
 				.setButtonText(t("IGNORE_MANAGER_REMOVE"))
 				.setClass("ignore-manager-remove-button")
 				.onClick(() => {
 					void this.removeIgnoredFile(path);
 				});
 		}
+	}
+
+	private async openIgnoredFile(path: string): Promise<void> {
+		const file = this.app.vault.getAbstractFileByPath(path);
+		if (!(file instanceof TFile)) {
+			new Notice(t("NOTICE_OPEN_FAIL"));
+			await this.plugin.pruneIgnoredFiles();
+			this.render();
+			return;
+		}
+
+		await this.plugin.openManagedFile(file);
+		this.close();
 	}
 
 	private async removeIgnoredFile(path: string): Promise<void> {

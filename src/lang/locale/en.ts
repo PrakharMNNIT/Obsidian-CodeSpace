@@ -104,6 +104,7 @@ export default {
     // Ignore manager
     IGNORE_MANAGER_TITLE: 'Manage ignored files',
     IGNORE_MANAGER_EMPTY: 'No ignored files.',
+    IGNORE_MANAGER_OPEN: 'Open',
     IGNORE_MANAGER_REMOVE: 'Remove',
 
     // Commands
@@ -124,6 +125,7 @@ export default {
     NOTICE_RENAME_FAIL: 'Failed to rename file',
     NOTICE_MOVE_SUCCESS: 'Moved to',
     NOTICE_MOVE_FAIL: 'Failed to move file',
+    NOTICE_OPEN_FAIL: 'Failed to open file.',
     NOTICE_IGNORE_SUCCESS: 'File ignored.',
     NOTICE_UNIGNORE_SUCCESS: 'File restored to dashboard.',
 

@@ -729,6 +729,14 @@ body .code-space-container .cm-activeLine::selection {
 	word-break: break-word;
 }
 
+.ignore-manager-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.ignore-manager-open-button,
 .ignore-manager-remove-button {
 	flex-shrink: 0;
 }

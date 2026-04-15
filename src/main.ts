@@ -373,6 +373,35 @@ export default class CodeSpacePlugin extends Plugin {
 		new IgnoreManagerModal(this.app, this).open();
 	}
 
+	async openManagedFile(file: TFile): Promise<void> {
+		const nativeBinaryExtensions = [
+			'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'psd',
+			'pdf',
+			'mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma',
+			'mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm', 'm4v',
+			'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz',
+			'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+			'exe', 'dll', 'so', 'dylib', 'bin', 'dat'
+		];
+
+		const ext = file.extension.toLowerCase();
+		const leaf = this.app.workspace.getLeaf(true);
+
+		if (nativeBinaryExtensions.includes(ext)) {
+			await leaf.openFile(file);
+		} else {
+			await leaf.setViewState({
+				type: VIEW_TYPE_CODE_SPACE,
+				active: true,
+				state: { file: file.path }
+			});
+
+			await this.updateOutline(file);
+		}
+
+		await this.app.workspace.revealLeaf(leaf);
+	}
+
 	private async handleIgnoredFileRename(file: TFile, oldPath: string): Promise<void> {
 		const normalizedOldPath = this.normalizeIgnoredPath(oldPath);
 		if (!this.settings.ignoredFiles.includes(normalizedOldPath)) {

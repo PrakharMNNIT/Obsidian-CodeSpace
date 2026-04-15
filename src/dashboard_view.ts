@@ -496,6 +496,10 @@ export class CodeDashboardView extends ItemView {
 	}
 
 	async openFile(file: TFile) {
+		if (this.plugin) {
+			await this.plugin.openManagedFile(file);
+			return;
+		}
 		// Obsidian 原生支持的二进制文件类型列表
 		const nativeBinaryExtensions = [
 			// 图片

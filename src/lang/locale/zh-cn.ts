@@ -159,7 +159,9 @@ export default {
     MENU_IGNORE_FILE: '忽略此文件',
     IGNORE_MANAGER_TITLE: '忽略管理',
     IGNORE_MANAGER_EMPTY: '当前没有已忽略的文件。',
+    IGNORE_MANAGER_OPEN: '打开',
     IGNORE_MANAGER_REMOVE: '移除',
+    NOTICE_OPEN_FAIL: '打开文件失败。',
     NOTICE_IGNORE_SUCCESS: '已忽略文件。',
     NOTICE_UNIGNORE_SUCCESS: '已恢复到面板。',
 };

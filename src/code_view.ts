@@ -1154,7 +1154,7 @@ export class CodeSpaceView extends TextFileView {
 					}
 
 					// 比较新旧内容，只有真的改变了才标记为 dirty
-					const oldContent = update.startState.doc.toString();
+					const oldContent = this.data;
 					const newContent = update.state.doc.toString();
 
 					if (oldContent !== newContent) {
@@ -1311,7 +1311,7 @@ export class CodeSpaceView extends TextFileView {
 		try {
 			// 读取文件内容
 			const content = await this.app.vault.read(this.file);
-			
+
 			// 检查内容是否发生变化
 			const currentContent = this.editorView.state.doc.toString();
 			if (content === currentContent) {

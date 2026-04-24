@@ -64,7 +64,7 @@ export default {
     VIEW_TITLE: 'Code space',
     BUTTON_OPEN_SETTINGS: 'Open settings',
     BUTTON_CREATE_FILE: 'Create code file',
-    BUTTON_MANAGE_IGNORED_FILES: 'Manage ignored files',
+    BUTTON_MANAGE_IGNORED_FILES: 'Manage ignored files and folders',
     SUBTITLE_MANAGED_FILES: 'Code files managed',
     TOOLBAR_SEARCH_PLACEHOLDER: 'Search files...',
     TOOLBAR_FILTER_FOLDER_ALL: 'All folders',
@@ -99,11 +99,12 @@ export default {
     MENU_OPEN_DEFAULT: 'Open in default app',
     MENU_REVEAL: 'Reveal in navigation',
     MENU_IGNORE_FILE: 'Ignore this file',
+    MENU_IGNORE_FOLDER: 'Ignore this folder',
     MENU_DELETE: 'Delete',
 
     // Ignore manager
-    IGNORE_MANAGER_TITLE: 'Manage ignored files',
-    IGNORE_MANAGER_EMPTY: 'No ignored files.',
+    IGNORE_MANAGER_TITLE: 'Manage ignored files and folders',
+    IGNORE_MANAGER_EMPTY: 'No ignored files or folders.',
     IGNORE_MANAGER_OPEN: 'Open',
     IGNORE_MANAGER_REMOVE: 'Remove',
 
@@ -127,7 +128,8 @@ export default {
     NOTICE_MOVE_FAIL: 'Failed to move file',
     NOTICE_OPEN_FAIL: 'Failed to open file.',
     NOTICE_IGNORE_SUCCESS: 'File ignored.',
-    NOTICE_UNIGNORE_SUCCESS: 'File restored to dashboard.',
+    NOTICE_IGNORE_FOLDER_SUCCESS: 'Folder ignored.',
+    NOTICE_UNIGNORE_SUCCESS: 'Restored to dashboard.',
 
     // Embed
     EMBED_TOOLTIP_OPEN: 'Click to open file (Ctrl: New Tab | Ctrl+Shift: New Window | Ctrl+Alt: Split Screen)',

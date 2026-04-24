@@ -36,6 +36,7 @@ export class IgnoreManagerModal extends Modal {
 
 		const listEl = contentEl.createDiv({ cls: "ignore-manager-list" });
 		for (const path of ignoredFiles) {
+			const ignoredFile = this.app.vault.getAbstractFileByPath(path);
 			const itemEl = listEl.createDiv({ cls: "ignore-manager-item" });
 			const infoEl = itemEl.createDiv({ cls: "ignore-manager-info" });
 			infoEl.createDiv({
@@ -48,12 +49,14 @@ export class IgnoreManagerModal extends Modal {
 			});
 
 			const actionsEl = itemEl.createDiv({ cls: "ignore-manager-actions" });
-			new ButtonComponent(actionsEl)
-				.setButtonText(t("IGNORE_MANAGER_OPEN"))
-				.setClass("ignore-manager-open-button")
-				.onClick(() => {
-					void this.openIgnoredFile(path);
-				});
+			if (ignoredFile instanceof TFile) {
+				new ButtonComponent(actionsEl)
+					.setButtonText(t("IGNORE_MANAGER_OPEN"))
+					.setClass("ignore-manager-open-button")
+					.onClick(() => {
+						void this.openIgnoredFile(path);
+					});
+			}
 
 			new ButtonComponent(actionsEl)
 				.setButtonText(t("IGNORE_MANAGER_REMOVE"))

@@ -483,6 +483,22 @@ export class CodeDashboardView extends ItemView {
 			})();
 		}));
 
+		const parentFolder = file.parent;
+		if (parentFolder && parentFolder.path !== "/") {
+			menu.addItem((item) => item.setTitle(t("MENU_IGNORE_FOLDER")).setIcon("folder-x").onClick(() => {
+				if (!this.plugin) {
+					return;
+				}
+
+				void (async () => {
+					const changed = await this.plugin.ignoreFile(parentFolder);
+					if (changed) {
+						new Notice(t("NOTICE_IGNORE_FOLDER_SUCCESS"));
+					}
+				})();
+			}));
+		}
+
 		menu.addItem((item) => item.setTitle(t('MENU_DELETE')).setIcon("trash").setWarning(true).onClick(async () => {
 			try {
 				await this.app.fileManager.trashFile(file);

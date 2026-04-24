@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App, TFile, normalizePath } from 'obsidian';
+import { Plugin, WorkspaceLeaf, Modal, Notice, TextComponent, ButtonComponent, App, TFile, TFolder, normalizePath } from 'obsidian';
 import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
@@ -147,14 +147,14 @@ export default class CodeSpacePlugin extends Plugin {
 		}));
 
 		this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
-			if (file instanceof TFile) {
-				void this.handleIgnoredFileRename(file, oldPath);
+			if (file instanceof TFile || file instanceof TFolder) {
+				void this.handleIgnoredPathRename(file, oldPath);
 			}
 		}));
 
 		this.registerEvent(this.app.vault.on("delete", (file) => {
-			if (file instanceof TFile) {
-				void this.handleIgnoredFileDelete(file);
+			if (file instanceof TFile || file instanceof TFolder) {
+				void this.handleIgnoredPathDelete(file);
 			}
 		}));
 
@@ -329,12 +329,19 @@ export default class CodeSpacePlugin extends Plugin {
 		return [...this.settings.ignoredFiles];
 	}
 
-	isIgnoredFile(fileOrPath: TFile | string): boolean {
+	isIgnoredFile(fileOrPath: TFile | TFolder | string): boolean {
 		const path = typeof fileOrPath === "string" ? fileOrPath : fileOrPath.path;
-		return this.settings.ignoredFiles.includes(this.normalizeIgnoredPath(path));
+		const normalizedPath = this.normalizeIgnoredPath(path);
+		if (!normalizedPath) {
+			return false;
+		}
+
+		return this.settings.ignoredFiles.some((ignoredPath) =>
+			this.isIgnoredPathMatch(normalizedPath, ignoredPath)
+		);
 	}
 
-	async ignoreFile(fileOrPath: TFile | string): Promise<boolean> {
+	async ignoreFile(fileOrPath: TFile | TFolder | string): Promise<boolean> {
 		const normalizedPath = this.normalizeIgnoredPath(typeof fileOrPath === "string" ? fileOrPath : fileOrPath.path);
 		if (!normalizedPath || this.settings.ignoredFiles.includes(normalizedPath)) {
 			return false;
@@ -345,7 +352,7 @@ export default class CodeSpacePlugin extends Plugin {
 		return true;
 	}
 
-	async unignoreFile(fileOrPath: TFile | string): Promise<boolean> {
+	async unignoreFile(fileOrPath: TFile | TFolder | string): Promise<boolean> {
 		const normalizedPath = this.normalizeIgnoredPath(typeof fileOrPath === "string" ? fileOrPath : fileOrPath.path);
 		if (!normalizedPath || !this.settings.ignoredFiles.includes(normalizedPath)) {
 			return false;
@@ -357,8 +364,10 @@ export default class CodeSpacePlugin extends Plugin {
 	}
 
 	async pruneIgnoredFiles(): Promise<boolean> {
-		const existingPaths = new Set(this.app.vault.getFiles().map((file) => file.path));
-		const filtered = this.settings.ignoredFiles.filter((path) => existingPaths.has(path));
+		const filtered = this.settings.ignoredFiles.filter((path) => {
+			const file = this.app.vault.getAbstractFileByPath(path);
+			return file instanceof TFile || file instanceof TFolder;
+		});
 		if (filtered.length === this.settings.ignoredFiles.length) {
 			return false;
 		}
@@ -402,29 +411,61 @@ export default class CodeSpacePlugin extends Plugin {
 		await this.app.workspace.revealLeaf(leaf);
 	}
 
-	private async handleIgnoredFileRename(file: TFile, oldPath: string): Promise<void> {
+	private async handleIgnoredPathRename(file: TFile | TFolder, oldPath: string): Promise<void> {
 		const normalizedOldPath = this.normalizeIgnoredPath(oldPath);
-		if (!this.settings.ignoredFiles.includes(normalizedOldPath)) {
+		const normalizedNewPath = this.normalizeIgnoredPath(file.path);
+		let changed = false;
+		const updatedPaths = this.settings.ignoredFiles.map((path) => {
+			if (path === normalizedOldPath) {
+				changed = true;
+				return normalizedNewPath;
+			}
+
+			if (file instanceof TFolder && path.startsWith(`${normalizedOldPath}/`)) {
+				changed = true;
+				return `${normalizedNewPath}/${path.slice(normalizedOldPath.length + 1)}`;
+			}
+
+			return path;
+		});
+
+		if (!changed) {
 			return;
 		}
 
-		this.settings.ignoredFiles = this.normalizeIgnoredFiles(
-			this.settings.ignoredFiles.map((path) => path === normalizedOldPath ? file.path : path)
-		);
+		this.settings.ignoredFiles = this.normalizeIgnoredFiles(updatedPaths);
 		await this.persistIgnoredFiles();
 	}
 
-	private async handleIgnoredFileDelete(file: TFile): Promise<void> {
-		if (!this.isIgnoredFile(file)) {
+	private async handleIgnoredPathDelete(file: TFile | TFolder): Promise<void> {
+		const normalizedPath = this.normalizeIgnoredPath(file.path);
+		const filtered = this.settings.ignoredFiles.filter((path) => {
+			if (path === normalizedPath) {
+				return false;
+			}
+
+			return !(file instanceof TFolder && path.startsWith(`${normalizedPath}/`));
+		});
+
+		if (filtered.length === this.settings.ignoredFiles.length) {
 			return;
 		}
 
-		this.settings.ignoredFiles = this.settings.ignoredFiles.filter((path) => path !== file.path);
+		this.settings.ignoredFiles = this.normalizeIgnoredFiles(filtered);
 		await this.persistIgnoredFiles();
+	}
+
+	private isIgnoredPathMatch(path: string, ignoredPath: string): boolean {
+		if (path === ignoredPath) {
+			return true;
+		}
+
+		const ignoredFile = this.app.vault.getAbstractFileByPath(ignoredPath);
+		return ignoredFile instanceof TFolder && path.startsWith(`${ignoredPath}/`);
 	}
 
 	private normalizeIgnoredPath(path: string): string {
-		return normalizePath(path).replace(/^\/+/, "");
+		return normalizePath(path).replace(/^\/+/, "").replace(/\/+$/, "");
 	}
 
 	private normalizeIgnoredFiles(paths: string[] | undefined): string[] {

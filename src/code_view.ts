@@ -10,6 +10,8 @@ import { diff } from "@codemirror/legacy-modes/mode/diff";
 import { lua } from "@codemirror/legacy-modes/mode/lua";
 import { perl } from "@codemirror/legacy-modes/mode/perl";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
+import { kotlin } from "@codemirror/legacy-modes/mode/clike";
+import { octave } from "@codemirror/legacy-modes/mode/octave";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets } from "@codemirror/autocomplete";
 import { SearchQuery, highlightSelectionMatches } from "@codemirror/search";
@@ -520,8 +522,8 @@ const LANGUAGE_PACKAGES: Record<string, Extension> = {
 	'mm': cpp(),     // Objective-C++
 	'swift': cpp(),  // Swift (C-like syntax)
 	// Java family (reuse java highlighter)
-	'kt': java(),    // Kotlin
-	'kts': java(),   // Kotlin script
+	'kt': StreamLanguage.define(kotlin),  // Kotlin
+	'kts': StreamLanguage.define(kotlin), // Kotlin script
 	'scala': java(), // Scala
 	'groovy': java(),// Groovy
 	'gradle': java(),// Gradle build script
@@ -559,6 +561,7 @@ const LANGUAGE_PACKAGES: Record<string, Extension> = {
 	'pm': StreamLanguage.define(perl),
 	'rb': StreamLanguage.define(ruby),
 	'erb': StreamLanguage.define(ruby),
+	'm': StreamLanguage.define(octave),
 	// Plain text (no highlighting)
 	'md': [],
 	'txt': [],

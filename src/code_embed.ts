@@ -14,8 +14,10 @@ import { java } from "@codemirror/lang-java";
 import { go } from "@codemirror/lang-go";
 import { yaml } from "@codemirror/lang-yaml";
 import { xml } from "@codemirror/lang-xml";
+import { kotlin } from "@codemirror/legacy-modes/mode/clike";
+import { octave } from "@codemirror/legacy-modes/mode/octave";
 import { tags } from "@lezer/highlight";
-import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
+import { syntaxHighlighting, HighlightStyle, StreamLanguage } from "@codemirror/language";
 import { Compartment, Extension } from "@codemirror/state";
 import CodeSpacePlugin from "./main";
 import { createFencedCodeBlock } from "./code_embed_markdown";
@@ -54,6 +56,9 @@ const LANGUAGE_PACKAGES: Record<string, Extension> = {
 	'rs': rust(),
 	'java': java(),
 	'cs': java(), // Use Java mode for C# as a close approximation
+	'kt': StreamLanguage.define(kotlin),
+	'kts': StreamLanguage.define(kotlin),
+	'm': StreamLanguage.define(octave),
 	'go': go(),
 	'yaml': yaml(),
 	'yml': yaml(),

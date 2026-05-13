@@ -495,7 +495,7 @@ async function runPatchedNativePdfExport(
 		return await Promise.resolve(invokeOriginal());
 	}
 
-	const ownerDoc = view.containerEl?.ownerDocument ?? document;
+	const ownerDoc = view.containerEl?.ownerDocument ?? activeDocument;
 	const knownModals = getModalContainers(ownerDoc);
 	const fallbackMarkdown = view.getViewData();
 	const stopSession = beginNativeExportSession(plugin, view.file, fallbackMarkdown, ownerDoc, knownModals);

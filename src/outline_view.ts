@@ -97,7 +97,7 @@ export class CodeOutlineView extends ItemView {
 		}
 
 		// 文件名
-		const fileName = container.createEl("div", {
+		const fileName = container.createDiv({
 			cls: "code-outline-filename"
 		});
 		fileName.setText(this.currentFile.name);
@@ -211,7 +211,8 @@ export class CodeOutlineView extends ItemView {
 		if (view && view.editorView) {
 			console.debug("Code Outline: Jumping to line", symbol.line);
 			// Small delay to ensure view is ready
-			setTimeout(() => {
+			const ownerWindow = targetLeaf.view.containerEl.ownerDocument.defaultView ?? activeWindow;
+			ownerWindow.setTimeout(() => {
 				try {
 					if (!view.editorView) return;
 					const line = view.editorView.state.doc.line(symbol.line);

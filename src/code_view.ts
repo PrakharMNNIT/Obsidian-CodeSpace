@@ -55,8 +55,8 @@ class CustomSearchPanel {
 		private view: EditorView,
 		private container: HTMLElement
 	) {
-		// 创建面板元素（不自动添加到 DOM）
-		this.panelEl = document.createElement('div');
+		// 创建面板元素，稍后移到容器顶部。
+		this.panelEl = this.container.createDiv();
 		this.panelEl.addClass('custom-search-panel');
 		this.panelEl.addClass('is-hidden');
 
@@ -156,10 +156,13 @@ class CustomSearchPanel {
 		this.closeBtn.addEventListener("click", () => this.close());
 
 		// 搜索输入变化时执行搜索
-		let searchTimeout: ReturnType<typeof setTimeout>;
+		const ownerWindow = this.panelEl.ownerDocument.defaultView ?? activeWindow;
+		let searchTimeout: number | undefined;
 		this.searchInput.addEventListener("input", () => {
-			clearTimeout(searchTimeout);
-			searchTimeout = setTimeout(() => this.doSearch(), 150);
+			if (searchTimeout !== undefined) {
+				ownerWindow.clearTimeout(searchTimeout);
+			}
+			searchTimeout = ownerWindow.setTimeout(() => this.doSearch(), 150);
 		});
 
 		// 回车键导航
@@ -836,7 +839,8 @@ export class CodeSpaceView extends TextFileView {
 	}
 
 	getThemeExtension() {
-		const isDark = document.body.classList.contains("theme-dark");
+		const ownerDoc = this.rootEl?.ownerDocument ?? activeDocument;
+		const isDark = ownerDoc.body.classList.contains("theme-dark");
 		return syntaxHighlighting(isDark ? myDarkHighlightStyle : myLightHighlightStyle);
 	}
 
@@ -906,7 +910,7 @@ export class CodeSpaceView extends TextFileView {
 		if (!this.searchPanel) return;
 
 		const isOpen = this.searchPanel.isOpen();
-		const activeEl = document.activeElement;
+		const activeEl = this.searchPanel.panelEl.ownerDocument.activeElement;
 		const focusInPanel = activeEl instanceof HTMLElement && this.searchPanel.panelEl.contains(activeEl);
 
 		// Ctrl/Cmd+F acts like a toggle: if focus is already in the panel, close it.
@@ -1386,7 +1390,8 @@ export class CodeSpaceView extends TextFileView {
 			});
 
 			// dispatch 完成后清除标志（使用 setTimeout 确保在事件循环中执行）
-			setTimeout(() => {
+			const ownerWindow = this.rootEl?.ownerDocument.defaultView ?? activeWindow;
+			ownerWindow.setTimeout(() => {
 				this.isSettingData = false;
 			}, 0);
 		}

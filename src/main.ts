@@ -63,7 +63,7 @@ class CreateCodeFileModal extends Modal {
 		});
 
 		// 聚焦到输入框
-		setTimeout(() => nameInput.inputEl.focus(), 10);
+		activeWindow.setTimeout(() => nameInput.inputEl.focus(), 10);
 
 		// 支持回车确认
 		nameInput.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -497,7 +497,7 @@ export default class CodeSpacePlugin extends Plugin {
 
 	private getKnownDocuments(): Document[] {
 		const docs = new Set<Document>();
-		docs.add(document);
+		docs.add(activeDocument);
 
 		this.app.workspace.iterateAllLeaves((leaf) => {
 			const view = leaf.view as unknown as { containerEl?: HTMLElement; contentEl?: HTMLElement } | null;

@@ -34,7 +34,7 @@ class RenameModal extends Modal {
 		});
 
 		// 聚焦到输入框
-		setTimeout(() => input.inputEl.focus(), 10);
+		activeWindow.setTimeout(() => input.inputEl.focus(), 10);
 	}
 
 	onClose() {
@@ -77,7 +77,7 @@ class FolderSuggestModal extends SuggestModal<string> {
 		el.setText(folder);
 	}
 
-	onChooseSuggestion(folder: string, evt: MouseEvent | KeyboardEvent) {
+	onChooseSuggestion(folder: string, _evt: MouseEvent | KeyboardEvent) {
 		this.onSubmit(folder);
 	}
 }
@@ -152,7 +152,7 @@ export class CodeDashboardView extends ItemView {
 		return ['py', 'js', 'c', 'cpp'];
 	}
 
-	render(keepState = false) {
+	render(_keepState = false) {
 		const container = this.containerEl.children[1];
 		if (!container) return;
 		container.empty();
@@ -232,7 +232,8 @@ export class CodeDashboardView extends ItemView {
 		const normalizeFilterValues = (value: unknown): string[] => {
 			if (!value) return [];
 			if (Array.isArray(value)) {
-				return value.filter((item) => typeof item === "string");
+				const values = value as unknown[];
+				return values.filter((item): item is string => typeof item === "string");
 			}
 			if (typeof value === "string") {
 				if (value === "all") return [];

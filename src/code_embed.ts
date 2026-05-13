@@ -442,7 +442,7 @@ function ensureCodeSpaceStylesInDocument(targetDoc: Document, plugin: CodeSpaceP
 	if (targetDoc.getElementById(CODE_SPACE_POPOUT_STYLE_ID)) return;
 
 	try {
-		const mainDoc = document;
+		const mainDoc = activeDocument;
 		const maybeLink1 = mainDoc.querySelector('link[href*="plugins/code-space/styles.css"]');
 		const maybeLink2 = mainDoc.querySelector('link[href*="/plugins/code-space/styles.css"]');
 		const link =
@@ -463,7 +463,7 @@ function ensureCodeSpaceStylesInDocument(targetDoc: Document, plugin: CodeSpaceP
 	}
 
 	// Fallback: clone the inline style tag if Obsidian injected plugin CSS as <style>.
-	const styleTags = Array.from(document.querySelectorAll("style"));
+	const styleTags = Array.from(activeDocument.querySelectorAll("style"));
 	const codeSpaceStyle = styleTags.find((styleEl) => {
 		const text = styleEl.textContent ?? "";
 		return text.includes(".code-embed-container") || text.includes(".code-space-container");
@@ -611,8 +611,8 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 	// Install observer for the main window document to catch any embeds that the post processor misses.
 	// This is necessary because registerMarkdownPostProcessor may be called before the embed element
 	// is attached to the workspace leaf, causing resolveSourcePathForEmbed to fail.
-	const mainWindow = window;
-	const mainDoc = document;
+	const mainWindow = activeWindow;
+	const mainDoc = activeDocument;
 	ensureCodeSpaceStylesInDocument(mainDoc, plugin);
 	installEmbedObserverForDocument(mainDoc, mainWindow, plugin);
 	installPrintRefreshForDocument(mainDoc, mainWindow, plugin);
@@ -1004,7 +1004,7 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 		cls: "code-embed-container",
 	});
 
-	const header = embedContainer.createEl("div", {
+	const header = embedContainer.createDiv({
 		cls: "code-embed-header",
 		attr: { title: t("EMBED_TOOLTIP_OPEN") },
 	});
@@ -1044,12 +1044,12 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 		void plugin.app.workspace.getLeaf(false).openFile(tFile);
 	});
 
-	header.createEl("span", { cls: "code-embed-filename", text: tFile.name });
+	header.createSpan({ cls: "code-embed-filename", text: tFile.name });
 
 	// Show line count badge
 	if (useRangeMode) {
 		// 范围模式：显示精确的行范围（如 "Lines 20-40 of 100"）
-		header.createEl("span", {
+		header.createSpan({
 			cls: "code-embed-linerange",
 			text: t("EMBED_LINES_RANGE")
 				.replace("{0}", String(effectiveStartLine))
@@ -1059,7 +1059,7 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	} else if (effectiveStartLine > 1) {
 		// 起始行模式（显示到末尾）
 		if (maxLines > 0 && lineCount > maxLines) {
-			header.createEl("span", {
+			header.createSpan({
 				cls: "code-embed-linerange",
 				text: t("EMBED_LINES_RANGE_SHOWING")
 					.replace("{0}", String(effectiveStartLine))
@@ -1068,7 +1068,7 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 					.replace("{3}", String(maxLines)),
 			});
 		} else {
-			header.createEl("span", {
+			header.createSpan({
 				cls: "code-embed-linerange",
 				text: t("EMBED_LINES_RANGE")
 					.replace("{0}", String(effectiveStartLine))
@@ -1077,20 +1077,20 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 			});
 		}
 	} else if (maxLines > 0 && lineCount > maxLines) {
-		header.createEl("span", {
+		header.createSpan({
 			cls: "code-embed-linerange",
 			text: t("EMBED_LINES_SHOWING")
 				.replace("{0}", String(maxLines))
 				.replace("{1}", String(lineCount)),
 		});
 	} else {
-		header.createEl("span", {
+		header.createSpan({
 			cls: "code-embed-linerange",
 			text: t("EMBED_LINES_TOTAL").replace("{0}", String(lineCount)),
 		});
 	}
 
-	const editorContainer = embedContainer.createEl("div", {
+	const editorContainer = embedContainer.createDiv({
 		cls: "code-embed-editor",
 	});
 
@@ -1119,7 +1119,7 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 
 	// Always render both CodeMirror (for interactive viewing) and static fallback (for PDF/print)
 	// The static version is hidden by default via CSS and only shown in print context
-	const staticContainer = embedContainer.createEl("div", {
+	const staticContainer = embedContainer.createDiv({
 		cls: "code-embed-static-fallback markdown-rendered",
 	});
 	const staticChild = new MarkdownRenderChild(staticContainer);

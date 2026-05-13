@@ -29,7 +29,7 @@ export class CustomDropdown {
 			this.toggle();
 		});
 
-		document.addEventListener("click", (e) => {
+		this.containerEl.ownerDocument.addEventListener("click", (e) => {
 			if (this.isOpen && !this.containerEl.contains(e.target as Node)) {
 				this.close();
 			}
@@ -175,7 +175,7 @@ export class MultiSelectDropdown {
 			this.toggle();
 		});
 
-		document.addEventListener("click", (e) => {
+		this.containerEl.ownerDocument.addEventListener("click", (e) => {
 			if (this.isOpen && !this.containerEl.contains(e.target as Node)) {
 				this.close();
 			}

@@ -37,43 +37,43 @@ body .code-space-container .cm-selectionBackground,
 body .code-space-container ::selection,
 body .code-space-container .cm-content ::selection,
 body .code-space-container .cm-line::selection {
-    background-color: var(--code-space-selection-bg) !important;
-    color: var(--code-space-selection-fg) !important;
+    background-color: var(--code-space-selection-bg);
+    color: var(--code-space-selection-fg);
 }
 
 /* 活动行内的选区也必须是淡红色 */
 body .code-space-container .cm-activeLine .cm-selectionBackground,
 body .code-space-container .cm-activeLine::selection {
-    background-color: var(--code-space-selection-bg-active) !important;
-    color: var(--code-space-selection-fg) !important;
+    background-color: var(--code-space-selection-bg-active);
+    color: var(--code-space-selection-fg);
 }
 
 .code-space-container .cm-editor {
     flex: 1 1 auto;
     min-height: 0;
-    height: auto !important;
+    height: auto;
 }
 
 .code-space-container .cm-editor .cm-scroller,
 .code-embed-container .cm-editor .cm-scroller {
-    font-family: var(--font-monospace), "JetBrains Mono", "Fira Code", "Cascadia Code", "Source Code Pro", Consolas, "Courier New", monospace !important;
+    font-family: var(--font-monospace), "JetBrains Mono", "Fira Code", "Cascadia Code", "Source Code Pro", Consolas, "Courier New", monospace;
     font-feature-settings: "liga" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
 }
 
 /* 优化编辑器行号 */
 .cm-gutters {
-    background-color: var(--background-primary) !important;
+    background-color: var(--background-primary);
     color: var(--text-muted);
     border-right: 1px solid var(--background-modifier-border);
     min-width: 32px;
     z-index: 10;
-    user-select: none !important; /* 禁止选中行号区域 */
+    user-select: none; /* 禁止选中行号区域 */
 }
 
 .code-space-container .cm-lineNumbers .cm-gutterElement {
-    padding: 0 8px !important;
-    background-color: var(--background-primary) !important;
+    padding: 0 8px;
+    background-color: var(--background-primary);
     min-width: 24px;
     text-align: right;
     font-variant-numeric: tabular-nums;
@@ -83,12 +83,12 @@ body .code-space-container .cm-activeLine::selection {
 .code-space-container .cm-cursor,
 .code-space-container .cm-dropCursor {
     border-left-width: 2px;
-    border-left-color: var(--interactive-accent) !important;
+    border-left-color: var(--interactive-accent);
 }
 
 /* 优化选区 */
 .code-space-container .cm-selectionBackground {
-    background-color: var(--code-space-selection-bg) !important;
+    background-color: var(--code-space-selection-bg);
 }
 
 /* 优化滚动条 */
@@ -128,10 +128,6 @@ body .code-space-container .cm-activeLine::selection {
     overflow-x: hidden;
     width: 100%;
     background-color: var(--background-primary);
-}
-
-/* 平滑滚动 */
-.code-dashboard-root {
     scroll-behavior: smooth;
 }
 
@@ -220,23 +216,6 @@ body .code-space-container .cm-activeLine::selection {
     font-size: 14px;
     font-weight: 400;
     line-height: 1.5; /* 增加行高优化阅读体验 */
-}
-
-.code-dashboard-title-group .clickable-icon:hover {
-    color: var(--text-normal);
-    background-color: var(--background-modifier-hover);
-}
-
-.code-dashboard-title-group .clickable-icon svg {
-    width: 20px;
-    height: 20px;
-}
-
-.code-dashboard-subtitle {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 14px;
-    font-weight: 400;
 }
 
 /* Toolbar */
@@ -820,35 +799,35 @@ body .code-space-container .cm-activeLine::selection {
 /* =================================================================
    高亮配色
    ================================================================= */
-.theme-light .cmt-keyword { color: var(--code-keyword, #af00db) !important; }
-.theme-light .cmt-variableName { color: var(--code-value, #001080) !important; }
-.theme-light .cmt-typeName { color: var(--code-class, #267f99) !important; }
-.theme-light .cmt-function { color: var(--code-function, #795e26) !important; }
-.theme-light .cmt-string { color: var(--code-string, #a31515) !important; }
-.theme-light .cmt-comment { color: var(--code-comment, #008000) !important; }
-.theme-light .cmt-number { color: var(--code-value, #098658) !important; }
-.theme-light .cmt-operator { color: var(--code-operator, #383838) !important; }
-.theme-light .cmt-punctuation { color: var(--code-punctuation, #383838) !important; }
-.theme-light .cmt-meta { color: #800000 !important; }
-.theme-dark .cmt-keyword { color: var(--code-keyword, #c678dd) !important; }
-.theme-dark .cmt-variableName { color: var(--code-value, #e06c75) !important; }
-.theme-dark .cmt-typeName { color: var(--code-class, #e5c07b) !important; }
-.theme-dark .cmt-function { color: var(--code-function, #61afef) !important; }
-.theme-dark .cmt-string { color: var(--code-string, #98c379) !important; }
-.theme-dark .cmt-comment { color: var(--code-comment, #7a8394) !important; }
-.theme-dark .cmt-number { color: var(--code-value, #d19a66) !important; }
-.theme-dark .cmt-operator { color: var(--code-operator, #56b6c2) !important; }
-.theme-dark .cmt-punctuation { color: var(--code-punctuation, #abb2bf) !important; }
-.theme-dark .cmt-meta { color: #c678dd !important; }
-.cmt-invalid { color: var(--text-error, #f00) !important; text-decoration: underline wavy; }
-.cmt-link { color: var(--text-accent, #2d7fba) !important; text-decoration: underline; }
+.theme-light .cmt-keyword { color: var(--code-keyword, #af00db); }
+.theme-light .cmt-variableName { color: var(--code-value, #001080); }
+.theme-light .cmt-typeName { color: var(--code-class, #267f99); }
+.theme-light .cmt-function { color: var(--code-function, #795e26); }
+.theme-light .cmt-string { color: var(--code-string, #a31515); }
+.theme-light .cmt-comment { color: var(--code-comment, #008000); }
+.theme-light .cmt-number { color: var(--code-value, #098658); }
+.theme-light .cmt-operator { color: var(--code-operator, #383838); }
+.theme-light .cmt-punctuation { color: var(--code-punctuation, #383838); }
+.theme-light .cmt-meta { color: #800000; }
+.theme-dark .cmt-keyword { color: var(--code-keyword, #c678dd); }
+.theme-dark .cmt-variableName { color: var(--code-value, #e06c75); }
+.theme-dark .cmt-typeName { color: var(--code-class, #e5c07b); }
+.theme-dark .cmt-function { color: var(--code-function, #61afef); }
+.theme-dark .cmt-string { color: var(--code-string, #98c379); }
+.theme-dark .cmt-comment { color: var(--code-comment, #7a8394); }
+.theme-dark .cmt-number { color: var(--code-value, #d19a66); }
+.theme-dark .cmt-operator { color: var(--code-operator, #56b6c2); }
+.theme-dark .cmt-punctuation { color: var(--code-punctuation, #abb2bf); }
+.theme-dark .cmt-meta { color: #c678dd; }
+.cmt-invalid { color: var(--text-error, #ff0000); border-bottom: 1px dotted currentColor; }
+.cmt-link { color: var(--text-accent, #2d7fba); text-decoration: underline; }
 .theme-light .cm-content { caret-color: #000000; }
 .theme-dark .cm-content { caret-color: #ffffff; }
 .code-space-container .cm-selectionBackground,
 .code-embed-editor .cm-selectionBackground {
-    background-color: var(--text-selection) !important;
+    background-color: var(--text-selection);
 }
-.cm-activeLine { background-color: var(--background-modifier-active-hover) !important; }
+.cm-activeLine { background-color: var(--background-modifier-active-hover); }
 
 /* =================================================================
    Code Embed Styles
@@ -1053,16 +1032,16 @@ body .code-space-container .cm-activeLine::selection {
 /* PDF export optimization: show static fallback, hide interactive editor */
 @media print {
 	.code-embed-container {
-		break-inside: avoid;
+		page-break-inside: avoid;
 		border: 1px solid var(--background-modifier-border);
 	}
 
 	.code-embed-editor {
-		display: none !important;
+		display: none;
 	}
 
 	.code-embed-static-fallback {
-		display: block !important;
+		display: block;
 	}
 
 	.code-embed-static-fallback pre {
@@ -1076,7 +1055,7 @@ body.mod-print .code-embed-editor,
 body.is-print .code-embed-editor,
 body.print-pdf .code-embed-editor,
 body.pdf-export .code-embed-editor {
-	display: none !important;
+	display: none;
 }
 
 body.print .code-embed-static-fallback,
@@ -1084,7 +1063,7 @@ body.mod-print .code-embed-static-fallback,
 body.is-print .code-embed-static-fallback,
 body.print-pdf .code-embed-static-fallback,
 body.pdf-export .code-embed-static-fallback {
-	display: block !important;
+	display: block;
 }
 
 body.print .code-embed-static-fallback pre,
@@ -1204,48 +1183,48 @@ body.pdf-export .code-embed-static-fallback pre {
 
 /* 搜索匹配高亮 - 金黄色 (普通匹配) */
 .code-space-container .cm-searchMatch {
-    background-color: var(--code-space-search-bg) !important;
+    background-color: var(--code-space-search-bg);
     border-radius: 2px;
     outline: 1px solid var(--code-space-search-outline);
-    color: inherit !important;
+    color: inherit;
 }
 
 /* 当前选中的搜索匹配 - 淡红色 (当前焦点) */
 .code-space-container .cm-searchMatch-selected {
-    background-color: var(--code-space-search-current-bg) !important;
+    background-color: var(--code-space-search-current-bg);
     border-radius: 2px;
     outline: 2px solid var(--code-space-search-current-outline);
     box-shadow: 0 0 0 1px hsla(var(--interactive-accent-hsl), 0.12),
                 0 0 8px var(--code-space-search-current-shadow);
-    color: var(--code-space-search-current-fg) !important;
+    color: var(--code-space-search-current-fg);
 }
 
 .theme-dark .code-space-container .cm-searchMatch {
-    background-color: var(--code-space-search-bg) !important;
+    background-color: var(--code-space-search-bg);
     outline: 1px solid var(--code-space-search-outline);
-    color: inherit !important;
+    color: inherit;
 }
 
 .theme-dark .code-space-container .cm-searchMatch-selected {
-    background-color: var(--code-space-search-current-bg) !important;
+    background-color: var(--code-space-search-current-bg);
     outline: 2px solid var(--code-space-search-current-outline);
     box-shadow: 0 0 0 1px hsla(var(--interactive-accent-hsl), 0.12),
                 0 0 8px var(--code-space-search-current-shadow);
-    color: var(--code-space-search-current-fg) !important;
+    color: var(--code-space-search-current-fg);
 }
 
 /* 其他相同的词 - 金黄色 */
 .code-space-container .cm-selectionMatch {
-    background-color: var(--code-space-selection-match-bg) !important;
+    background-color: var(--code-space-selection-match-bg);
     box-shadow: inset 0 0 0 1px var(--code-space-selection-match-outline);
-    color: inherit !important;
+    color: inherit;
     border-radius: 2px;
 }
 
 .code-space-container .cm-selectionMatch-main {
-    background-color: var(--code-space-selection-bg) !important;
-    color: var(--code-space-selection-fg) !important;
-    box-shadow: none !important;
+    background-color: var(--code-space-selection-bg);
+    color: var(--code-space-selection-fg);
+    box-shadow: none;
     border-radius: 2px;
 }
 
@@ -1256,16 +1235,16 @@ body.pdf-export .code-embed-static-fallback pre {
 
 /* 隐藏 CodeMirror 默认的搜索面板 */
 .code-space-container .cm-panel.cm-search {
-    display: none !important;
+    display: none;
 }
 
 /* =================================================================
    自定义搜索面板样式 - VS Code 风格
    ================================================================= */
 .custom-search-panel {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 1000 !important;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
     background-color: var(--background-secondary);
     border-bottom: 1px solid var(--background-modifier-border);
     padding: 8px 12px;
@@ -1441,7 +1420,7 @@ body.pdf-export .code-embed-static-fallback pre {
 }
 
 .is-hidden {
-    display: none !important;
+    display: none;
 }
 
 /* =================================================================

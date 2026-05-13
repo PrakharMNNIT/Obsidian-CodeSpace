@@ -1081,7 +1081,7 @@ export class CodeSpaceView extends TextFileView {
 			if (!container) {
 				console.warn("Code Space: Container not ready, retrying...");
 				// Retry after a short delay if container is not ready yet
-				requestAnimationFrame(initEditor);
+				window.requestAnimationFrame(initEditor);
 				return;
 			}
 			container.empty();
@@ -1096,7 +1096,7 @@ export class CodeSpaceView extends TextFileView {
 			this.initCodeMirror(root);
 		};
 
-		requestAnimationFrame(initEditor);
+		window.requestAnimationFrame(initEditor);
 	}
 
 	private initCodeMirror(root: HTMLElement): void {

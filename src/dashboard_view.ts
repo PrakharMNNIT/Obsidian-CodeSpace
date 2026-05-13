@@ -34,7 +34,7 @@ class RenameModal extends Modal {
 		});
 
 		// 聚焦到输入框
-		activeWindow.setTimeout(() => input.inputEl.focus(), 10);
+		window.setTimeout(() => input.inputEl.focus(), 10);
 	}
 
 	onClose() {

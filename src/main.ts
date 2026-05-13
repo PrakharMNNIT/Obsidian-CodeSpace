@@ -63,7 +63,7 @@ class CreateCodeFileModal extends Modal {
 		});
 
 		// 聚焦到输入框
-		activeWindow.setTimeout(() => nameInput.inputEl.focus(), 10);
+		window.setTimeout(() => nameInput.inputEl.focus(), 10);
 
 		// 支持回车确认
 		nameInput.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {

@@ -1,31 +1,36 @@
 # Code Space
 
-<h1 align="center">
-    Professional code file support for Obsidian
-    <p align='center'><img src='docs\img\Code.webp' width=80%></p> 
-    <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
-    <img alt="GitHub stars" src="https://img.shields.io/github/stars/unlinearity/Obsidian-Codespace?style=for-the-badge">
-    <img alt="License" src="https://img.shields.io/github/license/unlinearity/Obsidian-Codespace?style=for-the-badge">
-</h1>
+<h1 align="center">Professional code file support for Obsidian</h1>
 
 <p align="center">
-    <span>A comprehensive plugin for viewing, managing, and editing code files in Obsidian</span>
-    <br/>
-    <a href="/README.md">English</a>
-    ·
-    <a href="/README_CN.md">简体中文</a>
+  <img src="docs/img/Code.webp" alt="Code Space Preview" width="80%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/UNLINEARITY/Obsidian-CodeSpace/releases">
+    <img alt="Release" src="https://img.shields.io/github/v/release/UNLINEARITY/Obsidian-CodeSpace?label=Release&style=for-the-badge&logo=github&color=0891b2&labelColor=1c1917">
+  </a>
+  <a href="https://github.com/UNLINEARITY/Obsidian-CodeSpace/stargazers">
+    <img alt="Stars" src="https://img.shields.io/github/stars/UNLINEARITY/Obsidian-CodeSpace?label=Stars&style=for-the-badge&logo=github&color=0891b2&labelColor=1c1917">
+  </a>
+  <a href="https://github.com/UNLINEARITY/Obsidian-CodeSpace/blob/main/LICENSE">
+    <img alt="License" src="https://img.shields.io/github/license/UNLINEARITY/Obsidian-CodeSpace?label=License&style=for-the-badge&logo=opensourceinitiative&color=0891b2&labelColor=1c1917">
+  </a>
 </p>
 
 ---
+
 ## About the plugin
 
-Obsidian does not support **viewing, managing, and editing code files** out of the box. Code Space was created to solve this problem.
+> Code Space is available in the official Obsidian community plugin directory.🎉
+
+Obsidian's native workflow is centered on Markdown notes, so its support for centralized code file browsing, management, editing, structural navigation, and exporting embedded code is limited. Code Space was created to fill that gap.
 
 **The four layers of "Space":**
 
-1. **Management space**: Provides a unified index and management space for code files, allowing you to browse all code files through a visual dashboard.
-2. **Editing space**: Enter the code file for a professional code viewing and editing environment.
-3. **Embedding space**: Deeply integrates with Obsidian's native features to support references, embedded previews of code files, and native PDF export as real code blocks.
+1. **Management space**: Provides a unified index and management area for code files, so you can browse code files through a visual dashboard.
+2. **Editing space**: Opens code files in a dedicated environment for viewing and editing.
+3. **Embedding space**: Works with Obsidian's native features to support references, embedded code previews, and native PDF export as real code blocks.
 4. **Mount space**: Mount external folders into the Vault via system symlinks/junctions for cross-project code management.
 
 <p align="center">
@@ -39,10 +44,11 @@ Obsidian does not support **viewing, managing, and editing code files** out of t
 ### 1. Code file management space
 Provides a visual dashboard for unified indexing and management of code files within the vault.
 
-- **Visual dashboard**: An immersive management interface with grid layout and file status overview.
-- **Integrated management tools**: The header integrates **Settings** and **Create file** for simpler workflows.
-- **Multi-dimensional dynamic filtering**: Filter by file extension and search by filename in real time.
-- **Standard file operations**: Built-in Obsidian-supported file operations like rename, move, delete, and open in external apps.
+- **Visual dashboard**: A management interface with grid layout and file status overview.
+- **Integrated management tools**: The header provides quick access to **Settings**, **Create file**, and ignored item management.
+- **Multi-dimensional dynamic filtering**: Filter by folder and extension, search by filename or path, and sort by modified date, name, or type.
+- **Standard file operations**: Use Obsidian-supported operations such as rename, move, delete, reveal in navigation, and open in the default app.
+- **Dashboard state memory**: Search, filter, and sort state is saved with the plugin settings for smoother repeated use.
 
 <p align='center'><img src='docs\img\pre1.png' width=95%></p> 
 
@@ -52,23 +58,24 @@ Provides an IDE-like environment for code viewing and editing.
 
 - **Syntax highlighting**: Powered by CodeMirror 6 with accurate highlighting for many languages.
 - **Structured navigation**: Code outline view that parses classes, functions, and methods with click-to-jump navigation.
-- **Advanced search and replace**: Dedicated search panel with regex, case sensitivity, whole-word matching, and global replacement.
-- **Manual save**: Ctrl+S manual save with cursor position protection to prevent viewport jumps.
+- **Advanced search and replace**: Dedicated search panel with regex, case sensitivity, whole-word matching, single replacement, and replace all.
+- **Manual save**: Ctrl/Cmd+S manual save with unsaved-state feedback and cursor position protection to prevent viewport jumps.
 - **Basic editing helpers**: Auto indentation, bracket matching, code folding, and line numbers.
-- **Interaction optimizations**: Ctrl+wheel font scaling and a floating search button for quick access.
+- **Interaction optimizations**: Ctrl/Cmd+wheel font scaling and a floating search button for quick access.
 
 <p align='center'><img src='docs\img\pre22.png' width=95%></p> 
 
 ### 3. Obsidian native embedding space
 
-Elegantly embed and preview code in Markdown, allowing you to embed specific snippets from code files:
+Embed and preview code in Markdown, including specific snippets from code files:
 
 - **File references**: Link code files with `[[filename]]`.
 - **Code embedding**: Embed previews in Markdown with `![[filename]]`.
 - **Line ranges**: Specify start lines or line ranges to embed code snippets precisely.
 - **Quick preview**: Hover links to preview code content.
-- **Bidirectional sync**: Automatically detect and notify on external modifications.
-- **Native PDF export**: Use Obsidian's official **Export to PDF** and code file references will be exported as real code blocks instead of gray file cards.
+- **Open source files in several ways**: Click the embed header to open the source file. Ctrl/Cmd+click opens it in a new tab, Ctrl/Cmd+Shift+click opens it in a new window, and Ctrl/Cmd+Alt/Option+click opens it in a split pane.
+- **Preview sync**: When a source code file changes, related embedded previews are re-rendered.
+- **Native PDF export**: Use Obsidian's official **Export to PDF** and code file references are exported as real code blocks instead of gray file cards.
 - **Broader host compatibility**: Embedded code previews behave more reliably in reading mode, pop-out windows, and other hosts that reuse Obsidian's Markdown render pipeline.
 
 <p align='center'><img src='docs\img\pre3.png' width=95%></p> 
@@ -96,24 +103,27 @@ Tip: When a note contains code file embeds, export it with Obsidian's official *
 
 ### 4. External mount space (desktop only)
 
-Break through Vault boundaries to manage external project code.
+Work across Vault boundaries to manage external project code.
 
-- **Symlinks/junctions**: Mount external folders into the Vault by creating symlinks (macOS/Linux) or directory junctions (Windows)
-- **Seamless integration**: Code files in mounted folders appear in the dashboard with full Code Space functionality (editing, embedding, outline, etc.)
-- **Bidirectional sync**: External file modifications automatically sync to Obsidian, and edits in Obsidian are written back to the original location
-- **Cross-project collaboration**: Manage distributed code repositories directly without copying project code into the Vault
+- **Symlinks/junctions**: Create and manage symlinks (macOS/Linux) or directory junctions (Windows) from the settings page to mount external folders into the Vault
+- **Integrated workflow**: Code files in mounted folders appear in the dashboard with Code Space functionality such as editing, embedding, and outline navigation
+- **Bidirectional sync**: Edits made from either Obsidian or the external folder affect the same underlying files
+- **Cross-project work**: Manage distributed code repositories directly without copying project code into the Vault
+- **Mount status management**: View mount status, remove or relink mounts, and choose auto, symlink, or junction mode on Windows
 
 <p align='center'><img src='docs\img\pre7.png' width=98%></p> 
 
 **Usage:**
-1. Create symlinks/junctions in your Vault pointing to external folders
-2. Configure management rules in **Settings > Code Space > External Folders**
-3. Code Space will automatically recognize and index code files in mounted folders
+1. Open **Settings > Community plugins > Code Space**
+2. Enable **External folders**
+3. Click **Add external folder**, choose a source folder outside the Vault, and set its mount location inside the Vault
+4. Code Space creates the link, saves the configuration, and indexes code files inside the mounted folder
 
 **Important notes!**
 - **Desktop only**: External mounts are unavailable on iOS/Android due to sandbox restrictions
 - **Security risk**: External mounts allow the plugin to access files outside the Vault. **Only mount folders you trust**
-- **Performance issues**: Please do not abuse this feature. You can manage lightweight repositories or perform multi-repository coordination, but avoid mounting too many files or large files arbitrarily
+- **Permission differences**: On Windows, symlinks may require Developer Mode or administrator privileges. Auto mode tries symlink first, then falls back to junction
+- **Performance issues**: You can use this for lightweight repositories or multi-repository coordination, but avoid mounting too many files or very large directories
 - **Path stability**: Moving or renaming external folders will break the mount and require reconfiguration
 - **Sync issues**: If external folders are in cloud-synced directories (e.g., Dropbox, OneDrive), ensure Obsidian and external folders are in sync to avoid conflicts
 
@@ -122,10 +132,13 @@ Break through Vault boundaries to manage external project code.
 
 Access configuration via **Settings > Community plugins > Code Space**:
 
-- **Managed Extensions**: Specify file extensions managed by Code Space (comma-separated)
-- **Show Line Numbers**: Toggle line numbers (Default: On)
-- **Max Embed Lines**: Maximum lines shown in embedded previews (Default: 30, 0 for unlimited)
-- **External Folders (Desktop Only)**: Mount external folders into the Vault via system symlinks/junctions. See the "External Mount Space" chapter above for details.
+- **Managed extensions**: Specify file extensions managed by Code Space (comma-separated). Changes refresh the managed file associations.
+- **Show line numbers**: Toggle line numbers (default: on)
+- **Editor font size**: Font size for the code editor (default: 18px, range: 9-36px)
+- **Embed font size**: Font size for embedded code blocks in Markdown (default: 15px, range: 9-36px)
+- **Max embed lines**: Maximum lines shown in embedded previews (default: 20, 0 for unlimited)
+- **Location for new code files**: Create new code files in a custom folder or in the folder of the currently active file
+- **External folders (desktop only)**: Mount external folders into the Vault via system symlinks/junctions. You can enable or disable the feature, add, remove, relink, and inspect mounts.
 
 Note: External mounts allow access to files outside the Vault. Only mount folders you trust.
 
@@ -141,36 +154,36 @@ Note: External mounts allow access to files outside the Vault. Only mount folder
 | Web Technologies | `.html`, `.htm`, `.xhtml`, `.css`, `.scss`, `.sass`, `.less` |
 | Systems Programming | `.rs`, `.go`, `.java`, `.cs` |
 | Data/Config | `.sql`, `.yaml`, `.yml`, `.xml` |
-| Scripting | `.php`, `.r` |
+| Scripting | `.php`, `.r`, `.rb`, `.sh` |
 
-**You can add more languages in plugin settings. The plugin supports managing files with any extension!**
-- Code files open in the Code Space editor interface
-- Binary files (e.g., images or PDFs) open with Obsidian's native viewer. You can even use it to manage attachments like PDFs 
+**You can add more extensions in plugin settings. Code Space can manage files with custom extensions.**
+- Text and code files open in the Code Space editor interface
+- Binary files (e.g., images or PDFs) open with Obsidian's native viewer or the system default app. You can also use the dashboard to manage attachments like PDFs
 
 <p align='center'><img src='docs\img\pre4.png' width=95%></p> 
 
-### 2. Manually addable extensions (also support syntax highlighting)
+### 2. Additional text/code extensions with syntax highlighting
 
-Add the following extensions in **Settings > Code Space > Managed Extensions** to enable:
+Add the following extensions in **Settings > Code Space > Managed extensions** to enable:
 
 | Language | Extensions | Highlighting reused from |
 |------|--------|-------------|
-| **XML Family** | `.svg`, `.xsd`, `.xsl`, `.xslt`, `.wsdl`, `.plist`, `.csproj`, `.vcxproj`, `.props`, `.targets`, `.config` | XML |
+| **XML family** | `.xsd`, `.xsl`, `.xslt`, `.wsdl`, `.plist`, `.csproj`, `.vcxproj`, `.props`, `.targets`, `.config` | XML |
 | | `.urdf`, `.xacro` | XML |
-| **C/C++ Family** | `.ino`, `.pde`, `.nut` | C/C++ |
+| **C/C++ family** | `.ino`, `.pde`, `.nut` | C/C++ |
 | | `.cu`, `.cuh`, `.glsl`, `.vert`, `.frag`, `.hlsl`, `.mm`, `.swift` | C/C++ |
-| **Java Family** | `.kt`, `.kts`, `.scala`, `.groovy`, `.gradle` | Java |
-| **Frontend Frameworks** | `.vue`, `.svelte`, `.astro` | JavaScript |
-| **JSON Variants** | `.json5`, `.jsonc` | JavaScript |
-| **Python Family** | `.pyx`, `.pxd`, `.pxi`, `.ipy` | Python |
-| **Config Files** | `.toml`, `.ini`, `.cfg`, `.conf` | YAML |
-| **Shell Scripts** | `.sh`, `.bash`, `.zsh` | Shell |
+| **Java family** | `.kt`, `.kts`, `.scala`, `.groovy`, `.gradle` | Java |
+| **Frontend frameworks** | `.vue`, `.svelte`, `.astro` | JavaScript |
+| **JSON variants** | `.json5`, `.jsonc` | JavaScript |
+| **Python family** | `.pyx`, `.pxd`, `.pxi`, `.ipy` | Python |
+| **Config files** | `.toml`, `.ini`, `.cfg`, `.conf` | YAML |
+| **Shell scripts** | `.bash`, `.zsh` | Shell |
 | **PowerShell** | `.ps1`, `.psm1`, `.psd1` | PowerShell |
-| **Other Languages** | `.cmake`, `.dockerfile`, `.diff`, `.patch`, `.lua`, `.pl`, `.pm`, `.rb`, `.erb` | Dedicated |
+| **Other languages** | `.cmake`, `.dockerfile`, `.diff`, `.patch`, `.lua`, `.pl`, `.pm`, `.erb`, `.m` | Dedicated |
 
 ### 3. Binary file support (opened with Obsidian native viewer)
 
-The following files can also be managed in the Code Space dashboard (rename, move, delete, etc.), but will not be opened by the Code Space editor. They use the system viewer or Obsidian's native viewer.
+If you add the following extensions to the managed list, these files can also be managed in the Code Space dashboard (rename, move, delete, etc.). They are not opened by the Code Space editor; they use Obsidian's native viewer or the system default app.
 
 | Type | Extensions |
 |------|--------|
@@ -192,10 +205,11 @@ The following files can also be managed in the Code Space dashboard (rename, mov
 
 | Command path | Function |
 |---------|------|
-| `Ctrl+P` → "Open code dashboard" | Open the code management panel |
+| `Ctrl+P` → "Open dashboard" | Open the code management panel |
 | `Ctrl+P` → "Create code file" | Create a new code file |
-| `Ctrl+P` → "Reload code space plugin" | Reload the plugin |
-| `Ctrl+P` → "Toggle code outline" | Toggle the code outline view (Default: On) |
+| `Ctrl+P` → "Reload plugin" | Reload the plugin |
+| `Ctrl+P` → "Toggle code outline" | Toggle the code outline view |
+| `Ctrl+P` → "Search and replace" | Open the search and replace panel in the current Code Space editor |
 
 ---
 
@@ -203,16 +217,16 @@ The following files can also be managed in the Code Space dashboard (rename, mov
 
 | Shortcut | Function |
 |--------|------|
-| `Ctrl+S` | Manually save the file |
-| `Ctrl+Mouse Wheel` | Adjust font size |
-| `Ctrl+F` | Search |
-| `Ctrl+H` | Replace |
-| `Ctrl+C` | Copy selection |
-| `Ctrl+X` | Cut selection |
-| `Ctrl+V` | Paste content |
-| `Ctrl+A` | Select all |
-| `Ctrl+Z` | Undo |
-| `Ctrl+Y` or `Ctrl+Shift+Z` | Redo |
+| `Ctrl/Cmd+S` | Manually save the file |
+| `Ctrl/Cmd+Mouse wheel` | Adjust font size |
+| `Ctrl/Cmd+F` | Search |
+| `Ctrl+H` / `Cmd+Option+F` | Replace |
+| `Ctrl/Cmd+C` | Copy selection |
+| `Ctrl/Cmd+X` | Cut selection |
+| `Ctrl/Cmd+V` | Paste content |
+| `Ctrl/Cmd+A` | Select all |
+| `Ctrl/Cmd+Z` | Undo |
+| `Ctrl+Y` or `Ctrl/Cmd+Shift+Z` | Redo |
 | `Tab` | Increase indent |
 | `Shift+Tab` | Decrease indent |
 | `Enter`           | New line and preserve indent |
@@ -236,13 +250,15 @@ The following files can also be managed in the Code Space dashboard (rename, mov
 
 ## Installation
 
-### Method 1: Install via Obsidian community plugins (in review, not fully listed yet)
+### Method 1: Install from Obsidian community plugins (recommended)
+
+Code Space is available in the official Obsidian community plugin directory.
 
 1. Open **Settings > Community plugins**.
-2. Turn off "Safe mode".
-3. Click the "Browse" button.
+2. If Obsidian asks, turn off **Restricted mode**.
+3. Click **Browse**.
 4. Search for "Code Space".
-5. Click "Install" and enable.
+5. Click **Install** and enable the plugin.
 
 ### Method 2: Manual installation
 
@@ -252,7 +268,7 @@ The following files can also be managed in the Code Space dashboard (rename, mov
 
 ### Method 3: BRAT
 
-Install the BRAT plugin first. When adding a beta plugin in settings, enter this repository address: `https://github.com/UNLINEARITY/Obsidian-CodeSpace` and select the latest version.
+Use BRAT only if you want to test a development or prerelease build. Install the BRAT plugin first, then add this repository as a beta plugin: `https://github.com/UNLINEARITY/Obsidian-CodeSpace`, and select the latest version. Most users should install the community plugin version.
 
 <p align='center'><img src='docs\img\pre6.png' width=90%></p> 
 
@@ -262,7 +278,7 @@ Install the BRAT plugin first. When adding a beta plugin in settings, enter this
 
 ### Build requirements
 
-- Node.js 16 or later
+- Node.js 18 or later (current LTS recommended)
 - npm
 
 ### Build commands
@@ -285,8 +301,11 @@ obsidian-codespace/
 │   ├── outline_view.ts        # Outline view: sidebar structured navigation
 │   ├── code_parser.ts         # Syntax parser: multi-language structure analysis
 │   ├── code_embed.ts          # Embed processing: reference and preview logic
+│   ├── code_embed_markdown.ts # Code embed expansion for native PDF export and related flows
+│   ├── native_pdf_export_patch.ts # Native Export to PDF integration and export-chain patch
 │   ├── dropdown.ts            # UI components: dropdown/multi-select
 │   ├── folder_filter_modal.ts # Folder filter modal
+│   ├── ignore_manager_modal.ts # Ignored file/folder manager modal
 │   ├── external_mount.ts      # External mounts: symlink/junction management
 │   ├── settings.ts            # Settings panel: plugin configuration
 │   └── lang/
@@ -317,7 +336,7 @@ For issues or suggestions, please use [GitHub Issues](https://github.com/unlinea
 - [MIT License](LICENSE) - Copyright (c) 2026 unlinearity
 
 Known limitations:
-- Code file contents are currently not indexed by Obsidian's global search engine.
+- Code file contents are currently not indexed by Obsidian's global search engine. Use the Code Space search and replace panel for the current file.
 
 ---
 

@@ -1,31 +1,34 @@
 # Code Space
 
-<h1 align="center">
-    为 Obsidian 提供专业的代码文件支持
-    <p align='center'><img src='docs\img\Code.webp' width=80%></p> 
-    <img alt="Release version" src="https://img.shields.io/github/v/release/unlinearity/Obsidian-Codespace?style=for-the-badge">
-    <img alt="GitHub stars" src="https://img.shields.io/github/stars/unlinearity/Obsidian-Codespace?style=for-the-badge">
-    <img alt="License" src="https://img.shields.io/github/license/unlinearity/Obsidian-Codespace?style=for-the-badge">
-</h1>
+<h1 align="center">为 Obsidian 提供专业的代码文件支持</h1>
 
 <p align="center">
-    <span>一款功能全面的插件，在 Obsidian 中查看、管理、编辑和嵌入代码文件</span>
-    <br/>
-    <a href="/README.md">English</a>
-    ·
-    <a href="/README_CN.md">简体中文</a>
+  <img src="docs/img/Code.webp" alt="Code Space Preview" width="80%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/UNLINEARITY/Obsidian-CodeSpace/releases">
+    <img alt="Release" src="https://img.shields.io/github/v/release/UNLINEARITY/Obsidian-CodeSpace?label=Release&style=for-the-badge&logo=github&color=0891b2&labelColor=1c1917">
+  </a>
+  <a href="https://github.com/UNLINEARITY/Obsidian-CodeSpace/stargazers">
+    <img alt="Stars" src="https://img.shields.io/github/stars/UNLINEARITY/Obsidian-CodeSpace?label=Stars&style=for-the-badge&logo=github&color=0891b2&labelColor=1c1917">
+  </a>
+  <a href="https://github.com/UNLINEARITY/Obsidian-CodeSpace/blob/main/LICENSE">
+    <img alt="License" src="https://img.shields.io/github/license/UNLINEARITY/Obsidian-CodeSpace?label=License&style=for-the-badge&logo=opensourceinitiative&color=0891b2&labelColor=1c1917">
+  </a>
 </p>
 
 ---
 ## 关于插件
+> Code Space 已可在 Obsidian 官方社区插件市场中检索和安装。🎉
 
-Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space 插件为解决这一问题而生。
+Obsidian 原生工作流更偏向 Markdown 笔记，对**代码文件的集中查看、管理、编辑、结构导航和嵌入导出**支持有限。Code Space 插件为解决这一问题而生。
 
 **"Space" 的四层含义：**
 
 1. **管理空间**：为代码文件提供统一索引和管理空间，通过可视化面板浏览所有代码文件
 2. **编辑空间**：进入代码文件内部，提供专业的代码查看和编辑环境
-3. **嵌入空间**：与 Obsidian 原生功能深度融合，支持代码文件的引用和嵌入式预览
+3. **嵌入空间**：与 Obsidian 原生功能深度融合，支持代码文件的引用、嵌入式预览和原生 PDF 导出
 4. **挂载空间**：通过系统符号链接/目录联接将外部文件夹挂载到 Vault 内，实现跨项目代码管理
 
 
@@ -41,9 +44,10 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 提供可视化仪表盘，用于库内代码文件的统一索引与管理。
 
 - **可视化仪表盘**：提供沉浸式管理界面，支持网格布局与文件状态概览。
-- **集成管理工具**：标题区域集成**设置入口**与**文件创建功能**，简化操作路径。
-- **多维动态过滤**：支持按文件扩展名筛选和按文件名实时搜索。
-- **标准文件操作**：集成重命名、移动、删除及外部应用打开等obsidian原生支持的文件管理功能。
+- **集成管理工具**：标题区域集成**设置入口**、**文件创建功能**和**忽略项管理**，简化操作路径。
+- **多维动态过滤**：支持按文件夹、文件扩展名筛选，按文件名或路径实时搜索，并可按修改日期、名称、类型排序。
+- **标准文件操作**：集成重命名、移动、删除、在文件列表中显示、用默认应用打开等 Obsidian 原生支持的文件管理能力。
+- **面板状态记忆**：搜索、筛选与排序状态会随设置保存，便于持续管理同一批代码文件。
 
 <p align='center'><img src='docs\img\pre1.png' width=95%></p> 
 
@@ -53,22 +57,23 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 - **语法高亮**：基于 CodeMirror 6，提供针对多种编程语言的精确高亮显示。
 - **结构化导航**：集成代码大纲视图，自动解析类、函数及方法结构并支持点击跳转。
-- **高级搜索替换**：提供独立搜索面板，支持正则表达式、大小写敏感、全词匹配及全局替换。
-- **手动保存机制**：支持 Ctrl+S 手动保存，并具备光标位置保护功能，防止保存时视口跳动。
+- **高级搜索替换**：提供独立搜索面板，支持正则表达式、大小写敏感、全词匹配、逐项替换和全部替换。
+- **手动保存机制**：支持 Ctrl/Cmd+S 手动保存，并具备未保存状态提示与光标位置保护，防止保存时视口跳动。
 - **基础编辑辅助**：支持自动缩进、括号补全、代码折叠及行号显示。
-- **交互优化**：支持 Ctrl+滚轮缩放字体，并提供浮动搜索按钮以快速触达查找功能。
+- **交互优化**：支持 Ctrl/Cmd+滚轮缩放字体，并提供浮动搜索按钮以快速触达查找功能。
 
 <p align='center'><img src='docs\img\pre22.png' width=95%></p> 
 
 ### 3. Obsidian 原生嵌入空间
 
-在 Markdown 中优雅地嵌入和预览代码，允许你在markdown中嵌入指定代码文件的特定片段：
+在 Markdown 中优雅地嵌入和预览代码，允许你在 Markdown 中嵌入指定代码文件的特定片段：
 
 - **文件引用**：使用 `[[文件名]]` 语法链接代码文件
 - **代码嵌入**：使用 `![[文件名]]` 在 Markdown 中嵌入预览
 - **行号范围**：支持指定起始行或行范围，精确嵌入代码片段
 - **快速预览**：悬停在链接上即可预览代码内容
-- **双向同步**：外部修改自动检测并提示
+- **多方式打开源文件**：点击嵌入块标题可打开源文件；Ctrl/Cmd+点击在新标签页打开，Ctrl/Cmd+Shift+点击在新窗口打开，Ctrl/Cmd+Alt/Option+点击在分屏中打开
+- **预览同步**：源代码文件变更后会重新渲染相关嵌入预览
 - **原生 PDF 导出**：直接使用 Obsidian 官方 **Export to PDF**，代码文件引用会导出为真实代码块，同时保留官方版式、分页和导出设置能力
 - **宿主兼容性**：阅读模式、弹出窗口，以及复用 Obsidian 渲染链的宿主场景下，代码嵌入预览更加稳定
 
@@ -91,7 +96,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 - 若结束行小于起始行，自动调整为单行显示
 - 行号显示与原始文件保持一致
 
-> 从 `2.0.0` 开始，导出包含代码引用的 Markdown 文档时，可以直接使用 Obsidian 官方 **Export to PDF**。 
+> 导出包含代码引用的 Markdown 文档时，可以直接使用 Obsidian 官方 **Export to PDF**。Code Space 会在导出链路中把代码嵌入展开为真实代码块，而不是灰色文件卡片。
 
 <p align='center'><img src='docs\img\pre8.png' width=90%></p> 
 
@@ -99,22 +104,25 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 突破 Vault 边界，管理外部项目代码。
 
-- **符号链接/目录联接**：通过创建符号链接（macOS/Linux）或目录联接（Windows）将外部文件夹挂载到 Vault 内
+- **符号链接/目录联接**：通过设置页创建和管理符号链接（macOS/Linux）或目录联接（Windows），将外部文件夹挂载到 Vault 内
 - **无缝集成**：挂载的文件夹中的代码文件会出现在仪表盘，支持完整的 Code Space 功能（编辑、嵌入、大纲等）
 - **双向同步**：外部文件的修改会自动同步到 Obsidian，Obsidian 内的编辑也会写回原始位置
 - **跨项目协作**：无需将项目代码复制到 Vault，直接管理分布在各处的代码仓库
+- **挂载状态管理**：可查看挂载状态，支持移除、重新挂载，并可在 Windows 上选择自动、symlink 或 junction 链接类型
 
 <p align='center'><img src='docs\img\pre7.png' width=95%></p> 
 
 **使用方式**：
-1. 在 Vault 内创建指向外部文件夹的符号链接/目录联接
-2. 在 **设置 > Code Space > 外部文件夹** 中配置管理规则
-3. Code Space 会自动识别并索引挂载文件夹中的代码文件
+1. 打开 **设置 > 社区插件 > Code Space**
+2. 在 **外部文件夹（符号链接/目录联接）** 中启用挂载功能
+3. 点击 **添加外部文件夹**，选择 Vault 外部的源文件夹，并填写 Vault 内的挂载路径
+4. Code Space 会创建链接、保存配置，并自动识别挂载文件夹中的代码文件
 
 **重要提示！**
 - **仅桌面端支持**：由于移动端的沙盒限制，外部挂载在 iOS/Android 上不可用
 - **安全风险**：外部挂载使插件能够访问 Vault 外的文件系统，请**仅挂载可信目录**
-- **性能问题**：请不要滥用此功能，你可以管理轻量的仓库，或进行多仓库联动，但是请不要随意挂载太多的文件或比较大型的文件
+- **权限差异**：Windows 上 symlink 可能需要开发者模式或管理员权限；自动模式会先尝试 symlink，再回退到 junction
+- **性能问题**：请不要滥用此功能。你可以管理轻量仓库或进行多仓库联动，但不建议随意挂载过多文件或大型目录
 - **路径稳定性**：外部文件夹的移动或重命名会导致挂载失效，需重新配置
 - **同步问题**：如果外部文件夹位于云同步目录（如 Dropbox、OneDrive），请确保 Obsidian 和外部文件夹的同步状态一致，避免冲突
 
@@ -123,12 +131,15 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 通过 **设置 > 社区插件 > Code Space** 访问配置：
 
-- **管理的扩展名**：指定需要 Code Space 管理的文件扩展名（英文逗号分隔）
+- **管理的文件后缀**：指定需要 Code Space 管理的文件扩展名（英文逗号分隔），修改后会刷新文件关联
 - **显示行号**：是否显示行号（默认：开启）
-- **最大嵌入行数**：嵌入预览显示的最大行数（默认：30，0 表示无限制）
-- **外部文件夹（仅桌面端）**：通过系统符号链接/目录联接将外部文件夹挂载到 vault 内。
+- **编辑器字体大小**：代码编辑界面的字体大小（默认：18px，可设置 9-36px）
+- **引用块字体大小**：Markdown 嵌入式代码块的字体大小（默认：15px，可设置 9-36px）
+- **最大嵌入行数**：嵌入预览显示的最大行数（默认：20，0 表示无限制）
+- **新代码文件存放位置**：创建新代码文件时，可使用指定文件夹，或使用当前正在编辑的文件所在文件夹
+- **外部文件夹（仅桌面端）**：通过系统符号链接/目录联接将外部文件夹挂载到 Vault 内，可启用/禁用、添加、移除、重新挂载并查看状态。
 
-注意：外部挂载会使插件访问 vault 外的文件，请仅挂载可信目录。
+注意：外部挂载会使插件访问 Vault 外的文件，请仅挂载可信目录。
 
 ## 支持的语言（可以任意扩展）
 
@@ -142,21 +153,21 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 | Web 技术 | `.html`, `.htm`, `.xhtml`, `.css`, `.scss`, `.sass`, `.less` |
 | 系统编程 | `.rs`, `.go`, `.java`, `.cs` |
 | 数据/配置 | `.sql`, `.yaml`, `.yml`, `.xml` |
-| 脚本 | `.php`, `.r` |
+| 脚本 | `.php`, `.r`, `.rb`, `.sh` |
 
 **更多语言可通过插件设置添加，插件支持任意后缀的文件管理！**
-- 如果是代码文件，会通过 Code Space 的代码界面打开
-- 如果是二进制文件（例如图片或 PDF），会调用 Obsidian 原生的查看器进行打开，你甚至可以用来管理 PDF 等附件 
+- 如果是文本/代码文件，会通过 Code Space 的代码界面打开
+- 如果是二进制文件（例如图片或 PDF），会调用 Obsidian 原生查看器打开，你也可以用它集中管理 PDF 等附件
 
 <p align='center'><img src='docs\img\pre4.png' width=98%></p> 
 
-### 2. 可通过设置手动添加的扩展名（同样支持语法高亮）
+### 2. 可通过设置补充添加的文本/代码扩展名（同样支持语法高亮）
 
-在 **设置 > Code Space > 管理的扩展名** 中添加以下扩展名即可启用：
+在 **设置 > Code Space > 管理的文件后缀** 中添加以下扩展名即可启用：
 
 | 语言 | 扩展名 | 复用的高亮器 |
 |------|--------|-------------|
-| **XML 家族** | `.svg`, `.xsd`, `.xsl`, `.xslt`, `.wsdl`, `.plist`, `.csproj`, `.vcxproj`, `.props`, `.targets`, `.config` | XML |
+| **XML 家族** | `.xsd`, `.xsl`, `.xslt`, `.wsdl`, `.plist`, `.csproj`, `.vcxproj`, `.props`, `.targets`, `.config` | XML |
 | | `.urdf`, `.xacro` | XML |
 | **C/C++ 家族** | `.ino`, `.pde`, `.nut` | C/C++ |
 | | `.cu`, `.cuh`, `.glsl`, `.vert`, `.frag`, `.hlsl`, `.mm`, `.swift` | C/C++ |
@@ -165,13 +176,13 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 | **JSON 变体** | `.json5`, `.jsonc` | JavaScript |
 | **Python 家族** | `.pyx`, `.pxd`, `.pxi`, `.ipy` | Python |
 | **配置文件** | `.toml`, `.ini`, `.cfg`, `.conf` | YAML |
-| **Shell 脚本** | `.sh`, `.bash`, `.zsh` | Shell |
+| **Shell 脚本** | `.bash`, `.zsh` | Shell |
 | **PowerShell** | `.ps1`, `.psm1`, `.psd1` | PowerShell |
-| **其他语言** | `.cmake`, `.dockerfile`, `.diff`, `.patch`, `.lua`, `.pl`, `.pm`, `.rb`, `.erb` | 专用 |
+| **其他语言** | `.cmake`, `.dockerfile`, `.diff`, `.patch`, `.lua`, `.pl`, `.pm`, `.erb`, `.m` | 专用 |
 
 ### 3. 二进制文件支持（Obsidian 原生打开）
 
-以下文件同样可以在 Code Space 的仪表盘进行管理（重命名、移动、删除等操作），不会被 Code Space 编辑器打开，使用系统查看器或 Obsidian 原生的查看器。
+如果把以下后缀加入管理列表，这些文件同样可以在 Code Space 的仪表盘进行管理（重命名、移动、删除等操作）。它们不会被 Code Space 编辑器打开，而是使用 Obsidian 原生查看器或系统默认应用打开。
 
 | 类型 | 扩展名 |
 |------|--------|
@@ -193,10 +204,11 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 | 命令路径 | 功能 |
 |---------|------|
-| `Ctrl+P` → "Open code dashboard" | 打开代码管理面板 |
-| `Ctrl+P` → "Create code file" | 创建新代码文件 |
-| `Ctrl+P` → "Reload code space plugin" | 重新加载插件 |
-| `Ctrl+P` → "Toggle code outline" | 开关代码大纲视图（默认打开） |
+| `Ctrl+P` → "打开主面板 (Dashboard)" | 打开代码管理面板 |
+| `Ctrl+P` → "创建代码文件" | 创建新代码文件 |
+| `Ctrl+P` → "重载插件" | 重新加载插件 |
+| `Ctrl+P` → "切换大纲视图 (Outline)" | 开关代码大纲视图 |
+| `Ctrl+P` → "搜索与替换" | 在当前 Code Space 编辑器中打开搜索与替换面板 |
 
 ---
 
@@ -204,16 +216,16 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 | 快捷键 | 功能 |
 |--------|------|
-| `Ctrl+S` | 手动保存文件 |
-| `Ctrl+鼠标滚轮` | 调整字体大小 |
-| `Ctrl+F` | 搜索 |
-| `Ctrl+H` | 替换 |
-| `Ctrl+C` | 复制选中内容 |
-| `Ctrl+X` | 剪切选中内容 |
-| `Ctrl+V` | 粘贴内容 |
-| `Ctrl+A` | 全选 |
-| `Ctrl+Z` | 撤销 |
-| `Ctrl+Y` 或 `Ctrl+Shift+Z` | 重做 |
+| `Ctrl/Cmd+S` | 手动保存文件 |
+| `Ctrl/Cmd+鼠标滚轮` | 调整字体大小 |
+| `Ctrl/Cmd+F` | 搜索 |
+| `Ctrl+H` / `Cmd+Option+F` | 替换 |
+| `Ctrl/Cmd+C` | 复制选中内容 |
+| `Ctrl/Cmd+X` | 剪切选中内容 |
+| `Ctrl/Cmd+V` | 粘贴内容 |
+| `Ctrl/Cmd+A` | 全选 |
+| `Ctrl/Cmd+Z` | 撤销 |
+| `Ctrl+Y` 或 `Ctrl/Cmd+Shift+Z` | 重做 |
 | `Tab` | 增加缩进 |
 | `Shift+Tab` | 减少缩进 |
 | `Enter`           | 换行并保持缩进 |
@@ -237,23 +249,25 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 ## 安装
 
-### 方式一：通过 Obsidian 社区插件安装（在审核列表，还未完全上架）
+### 方式一：通过 Obsidian 社区插件市场安装（推荐）
+
+Code Space 已可在 Obsidian 官方社区插件市场中检索和安装。
 
 1. 打开 **设置 > 社区插件**
-2. 关闭"安全模式"
-3. 点击"浏览"按钮
-4. 搜索"Code Space"
-5. 点击"安装"并启用
+2. 如 Obsidian 提示，请关闭 **受限模式**
+3. 点击 **浏览** 按钮
+4. 搜索 **Code Space**
+5. 点击 **安装** 并启用
 
 ### 方式二：手动安装
 
 1. 访问 [Releases](https://github.com/unlinearity/Obsidian-Codespace/releases/latest) 
-2. 下载 main.js、manifest.json、styles.css，放置在你的obsidian库的插件目录：`.obsidian/plugins/code-space/`，code-space 这个文件夹如果不存在请手动创建
+2. 下载 `main.js`、`manifest.json`、`styles.css`，放置在你的 Obsidian 库插件目录：`.obsidian/plugins/code-space/`，如果 `code-space` 文件夹不存在请手动创建
 3. 在 Obsidian 设置中重新加载并启用插件
 
 ### 方式三：BRAT 下载
 
-先下载好BRAT插件，设置中添加Beta插件时，填写本仓库地址：https://github.com/UNLINEARITY/Obsidian-CodeSpace ，选择最新版本。
+如果需要测试开发版或预发布版本，可以使用 BRAT。先安装 BRAT 插件，在设置中添加 Beta 插件时，填写本仓库地址：`https://github.com/UNLINEARITY/Obsidian-CodeSpace`，选择最新版本。普通用户优先使用社区插件市场版本。
 
 <p align='center'><img src='docs\img\pre6.png' width=85%></p> 
 
@@ -263,7 +277,7 @@ Obsidian 默认不支持**代码文件的查看、管理和编辑**，Code Space
 
 ### 构建要求
 
-- Node.js 16 或更高版本
+- Node.js 18 或更高版本（推荐当前 LTS）
 - npm
 
 ### 构建命令
@@ -290,6 +304,7 @@ obsidian-codespace/
 │   ├── native_pdf_export_patch.ts # 原生 Export to PDF 接管与导出链 patch
 │   ├── dropdown.ts            # UI 组件：下拉/多选
 │   ├── folder_filter_modal.ts # 文件夹筛选弹窗
+│   ├── ignore_manager_modal.ts # 忽略文件/文件夹管理弹窗
 │   ├── external_mount.ts      # 外部挂载：symlink/junction 管理
 │   ├── settings.ts            # 设置面板：插件配置
 │   └── lang/
@@ -320,7 +335,7 @@ obsidian-codespace/
 - [MIT License](LICENSE) - Copyright (c) 2026 unlinearity
 
 已知限制：
-- 代码文件内容目前不被 Obsidian 的全局搜索引擎索引。
+- 代码文件内容目前不被 Obsidian 的全局搜索引擎索引；在 Code Space 编辑器内可以使用搜索与替换面板处理当前文件。
 
 ---
 ## 致谢

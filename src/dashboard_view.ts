@@ -87,6 +87,19 @@ export const VIEW_TYPE_CODE_DASHBOARD = "code-space-dashboard";
 export class CodeDashboardView extends ItemView {
 	plugin: CodeSpacePlugin; 
 	state: DashboardState;
+	private activeDropdowns: Array<CustomDropdown | MultiSelectDropdown> = [];
+	private refreshPending = false;
+	private fileListContainer: HTMLElement | null = null;
+	private managedFiles: TFile[] = [];
+	private fileItems = new Map<string, HTMLElement>();
+	private scheduleRender = debounce(() => {
+		if (!this.containerEl.isShown()) {
+			this.refreshPending = true;
+			return;
+		}
+		this.refreshPending = false;
+		this.render(true);
+	}, 250, true);
 
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
@@ -128,10 +141,28 @@ export class CodeDashboardView extends ItemView {
 		}
 
 		this.render();
-		this.registerEvent(this.app.vault.on("create", () => this.render(true)));
-		this.registerEvent(this.app.vault.on("delete", () => this.render(true)));
-		this.registerEvent(this.app.vault.on("rename", () => this.render(true)));
-		this.registerEvent(this.app.vault.on("modify", () => this.render(true)));
+		this.registerEvent(this.app.vault.on("create", () => this.scheduleRender()));
+		this.registerEvent(this.app.vault.on("delete", () => this.scheduleRender()));
+		this.registerEvent(this.app.vault.on("rename", () => this.scheduleRender()));
+		this.registerEvent(this.app.vault.on("modify", (file) => {
+			if (file instanceof TFile && this.isManagedFile(file)) {
+				this.handleManagedFileModify(file);
+			}
+		}));
+		this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
+			if (this.refreshPending && this.containerEl.isShown()) {
+				this.scheduleRender.run();
+			}
+		}));
+	}
+
+	async onClose(): Promise<void> {
+		this.scheduleRender.cancel();
+		this.saveState.cancel();
+		this.destroyDropdowns();
+		this.fileListContainer = null;
+		this.managedFiles = [];
+		this.fileItems.clear();
 	}
 
 	// Persist state to settings with debounce to avoid excessive file writes
@@ -152,7 +183,39 @@ export class CodeDashboardView extends ItemView {
 		return ['py', 'js', 'c', 'cpp'];
 	}
 
+	private isManagedFile(file: TFile): boolean {
+		return this.getManagedExtensions().includes(file.extension.toLowerCase()) && !this.plugin?.isIgnoredFile(file);
+	}
+
+	private destroyDropdowns(): void {
+		for (const dropdown of this.activeDropdowns) {
+			dropdown.destroy();
+		}
+		this.activeDropdowns = [];
+	}
+
+	private handleManagedFileModify(file: TFile): void {
+		if (!this.containerEl.isShown()) {
+			this.refreshPending = true;
+			return;
+		}
+
+		if (!this.fileListContainer || !this.managedFiles.some((managedFile) => managedFile.path === file.path)) {
+			this.scheduleRender();
+			return;
+		}
+
+		if (this.state.sortBy === "date") {
+			this.refreshFileList(this.fileListContainer, this.managedFiles);
+			return;
+		}
+
+		const timeEl = this.fileItems.get(file.path)?.querySelector<HTMLElement>(".code-file-time");
+		timeEl?.setText(moment(file.stat.mtime).fromNow());
+	}
+
 	render(_keepState = false) {
+		this.destroyDropdowns();
 		const container = this.containerEl.children[1];
 		if (!container) return;
 		container.empty();
@@ -209,6 +272,7 @@ export class CodeDashboardView extends ItemView {
 			codeExtensions.includes(file.extension.toLowerCase()) &&
 			!this.plugin?.isIgnoredFile(file)
 		);
+		this.managedFiles = files;
 
 		headerContainer.createEl("p", { text: `${files.length} ${t('SUBTITLE_MANAGED_FILES')}`, cls: "code-dashboard-subtitle" });
 
@@ -280,6 +344,7 @@ export class CodeDashboardView extends ItemView {
 			countLabel: (count) => `${t('TOOLBAR_FILTER_EXTENSION_LABEL')} (${count})`,
 			clearLabel: t('TOOLBAR_FILTER_CLEAR')
 		});
+		this.activeDropdowns.push(filterDropdown);
 		existingExts.forEach(ext => filterDropdown.addOption(ext, ext.toUpperCase()));
 		const availableExtSet = new Set(existingExts);
 		const normalizedExts = this.state.filterExt.filter((value) => availableExtSet.has(value));
@@ -294,6 +359,7 @@ export class CodeDashboardView extends ItemView {
 		// 5. Sort
 		const sortContainer = toolbar.createDiv({ cls: "custom-dropdown-wrapper" });
 		const sortDropdown = new CustomDropdown(sortContainer);
+		this.activeDropdowns.push(sortDropdown);
 		sortDropdown.addOption("date", t('TOOLBAR_SORT_DATE'));
 		sortDropdown.addOption("name", t('TOOLBAR_SORT_NAME'));
 		sortDropdown.addOption("type", t('TOOLBAR_SORT_TYPE'));
@@ -317,11 +383,13 @@ export class CodeDashboardView extends ItemView {
 
 		// List Container
 		const fileListContainer = root.createDiv({ cls: "code-file-list-container" });
+		this.fileListContainer = fileListContainer;
 		this.refreshFileList(fileListContainer, files);
 	}
 
 	refreshFileList(container: HTMLElement, allFiles: TFile[]) {
 		container.empty();
+		this.fileItems.clear();
 		const grid = container.createDiv({ cls: "code-file-list" });
 		const externalMounts = this.plugin?.settings?.externalMounts ?? [];
 		const externalMountPaths = externalMounts
@@ -370,6 +438,7 @@ export class CodeDashboardView extends ItemView {
 
 		files.forEach(file => {
 			const item = grid.createDiv({ cls: "code-file-item" });
+			this.fileItems.set(file.path, item);
 			const isExternal = isExternalFile(file);
 			if (isExternal) {
 				item.addClass("code-file-item-external");
@@ -424,7 +493,6 @@ export class CodeDashboardView extends ItemView {
 							`${file.parent?.path}/${newName}.${file.extension}`;
 						await this.app.fileManager.renameFile(file, newPath);
 						new Notice(`${t('NOTICE_RENAME_SUCCESS')} ${newName}.${file.extension}`);
-						this.render(true);
 					} catch (error) {
 						console.error("Failed to rename file:", error);
 						new Notice(t('NOTICE_RENAME_FAIL'));
@@ -444,7 +512,6 @@ export class CodeDashboardView extends ItemView {
 							`${folderPath}/${file.name}`;
 						await this.app.fileManager.renameFile(file, newPath);
 						new Notice(`${t('NOTICE_MOVE_SUCCESS')} ${newPath}`);
-						this.render(true);
 					} catch (error) {
 						console.error("Failed to move file:", error);
 						new Notice(t('NOTICE_MOVE_FAIL'));
@@ -503,7 +570,6 @@ export class CodeDashboardView extends ItemView {
 		menu.addItem((item) => item.setTitle(t('MENU_DELETE')).setIcon("trash").setWarning(true).onClick(async () => {
 			try {
 				await this.app.fileManager.trashFile(file);
-				this.render(true);
 			} catch (error) {
 				console.error("Failed to delete file:", error);
 			}

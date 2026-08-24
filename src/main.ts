@@ -3,8 +3,8 @@ import { CodeSpaceView, VIEW_TYPE_CODE_SPACE } from "./code_view";
 import { CodeDashboardView, VIEW_TYPE_CODE_DASHBOARD } from "./dashboard_view";
 import { CodeOutlineView, VIEW_TYPE_CODE_OUTLINE } from "./outline_view";
 import { IgnoreManagerModal } from "./ignore_manager_modal";
-import { CodeSpaceSettings, DEFAULT_SETTINGS, CodeSpaceSettingTab, FolderSuggestModal } from "./settings";
-import { registerCodeEmbedProcessor } from "./code_embed";
+import { CodeSpaceSettings, CodeSpaceSettingTab, FolderSuggestModal, normalizeCodeSpaceSettings } from "./settings";
+import { refreshAllCodeEmbeds, registerCodeEmbedProcessor } from "./code_embed";
 import { registerNativePdfExportPatch } from "./native_pdf_export_patch";
 import { t } from "./lang/helpers";
 
@@ -109,6 +109,7 @@ class CreateCodeFileModal extends Modal {
 
 export default class CodeSpacePlugin extends Plugin {
 	settings: CodeSpaceSettings;
+	private registeredExtensions: string[] = [];
 
 	async onload() {
 		console.debug("Code Space: Plugin loading...");
@@ -273,8 +274,22 @@ export default class CodeSpacePlugin extends Plugin {
 			.filter(s => s.length > 0)
 			.filter(ext => !binaryExtensions.includes(ext.toLowerCase())); // 过滤掉二进制文件扩展名
 
+		if (exts.length === this.registeredExtensions.length && exts.every((ext, index) => ext === this.registeredExtensions[index])) {
+			return;
+		}
+
 		try {
+			if (this.registeredExtensions.length > 0) {
+				type AppWithViewRegistry = App & {
+					viewRegistry?: { unregisterExtensions(extensions: string[]): void };
+				};
+				const viewRegistry = (this.app as AppWithViewRegistry).viewRegistry;
+				if (viewRegistry?.unregisterExtensions) {
+					viewRegistry.unregisterExtensions(this.registeredExtensions);
+				}
+			}
 			this.registerExtensions(exts, VIEW_TYPE_CODE_SPACE);
+			this.registeredExtensions = exts;
 		} catch (e) {
 			console.debug("Code Space extension registration warning:", e);
 		}
@@ -296,29 +311,31 @@ export default class CodeSpacePlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as CodeSpaceSettings);
+		this.settings = normalizeCodeSpaceSettings(await this.loadData());
 		this.settings.ignoredFiles = this.normalizeIgnoredFiles(this.settings.ignoredFiles);
 	}
 
-	async saveSettings() {
+	async saveSettings(scope: "all" | "extensions" | "editor" | "embed" | "dashboard" | "none" = "all") {
 		await this.saveData(this.settings);
-		
-		// Update CSS variables
-		this.updateCSSVariables();
 
-		// 重新注册扩展名（必须在刷新视图之前）
-		this.registerCodeExtensions();
-
-		// 刷新 Dashboard (更新后缀列表)
-		this.refreshDashboardViews();
-
-		// 刷新编辑器 (更新行号设置)
-		const editorLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_SPACE);
-		editorLeaves.forEach(leaf => {
-			if (leaf.view instanceof CodeSpaceView) {
-				leaf.view.refreshSettings();
-			}
-		});
+		if (scope === "all" || scope === "embed") {
+			this.updateCSSVariables();
+			refreshAllCodeEmbeds(this);
+		}
+		if (scope === "all" || scope === "extensions") {
+			this.registerCodeExtensions();
+		}
+		if (scope === "all" || scope === "extensions" || scope === "dashboard") {
+			this.refreshDashboardViews();
+		}
+		if (scope === "all" || scope === "editor") {
+			const editorLeaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CODE_SPACE);
+			editorLeaves.forEach(leaf => {
+				if (leaf.view instanceof CodeSpaceView) {
+					leaf.view.refreshSettings();
+				}
+			});
+		}
 	}
 
 	async saveDashboardState() {

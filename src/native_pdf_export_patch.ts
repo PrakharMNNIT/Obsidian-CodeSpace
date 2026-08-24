@@ -10,7 +10,7 @@ import type CodeSpacePlugin from "./main";
 const NATIVE_EXPORT_COMMAND_ID = "workspace:export-pdf";
 const EXPORT_MODAL_SELECTOR = ".modal-container";
 const EXPORT_SESSION_TTL_MS = 120000;
-const POPUP_SCAN_INTERVAL_MS = 80;
+const POPUP_SCAN_INTERVAL_MS = 250;
 const POPUP_PROCESSED_ATTR = "data-code-space-native-pdf-processed";
 const NATIVE_PDF_LOG_PREFIX = "Code Space [native-pdf]";
 
@@ -190,6 +190,7 @@ function installPopupPrintObserver(
 		session.popupOpened = false;
 		maybeCleanupSession(session, "popup closed");
 	};
+	session.popupCleanups.add(cleanup);
 
 	const scanPopup = () => {
 		if (popupWindow.closed) {
@@ -251,9 +252,9 @@ function installPopupPrintObserver(
 	} catch (error) {
 		warnNativePdf(session, "failed to observe native PDF popup window", { error });
 		cleanup();
+		return cleanup;
 	}
 
-	session.popupCleanups.add(cleanup);
 	return cleanup;
 }
 
@@ -359,25 +360,31 @@ async function replacePopupCodeEmbeds(
 
 function installPopupWindowHook(session: NativeExportSession, plugin: CodeSpacePlugin) {
 	const win = session.ownerWindow;
-	const originalOpen = win.open.bind(win);
+	// eslint-disable-next-line @typescript-eslint/unbound-method -- Preserve identity so cleanup never clobbers a later wrapper.
+	const originalOpen = win.open;
 
-	win.open = ((...args: Parameters<typeof window.open>) => {
+	const wrappedOpen = ((...args: Parameters<typeof window.open>) => {
 		debugNativePdf(session, "window.open intercepted", {
 			url: args[0] ?? "",
 			target: args[1] ?? "",
 			features: args[2] ?? "",
 		});
-		const popupWindow = originalOpen(...args);
+		const popupWindow = originalOpen.apply(win, args);
 		if (activeNativeExportSession === session && popupWindow) {
 			session.popupOpened = true;
 			debugNativePdf(session, "popup window opened successfully");
 			installPopupPrintObserver(session, plugin, popupWindow);
+			session.restoreWindowOpen?.();
+			session.restoreWindowOpen = null;
 		}
 		return popupWindow;
 	}) as typeof window.open;
+	win.open = wrappedOpen;
 
 	session.restoreWindowOpen = () => {
-		win.open = originalOpen as typeof window.open;
+		if (win.open === wrappedOpen) {
+			win.open = originalOpen;
+		}
 	};
 }
 
@@ -489,7 +496,7 @@ async function runPatchedNativePdfExport(
 ): Promise<unknown> {
 	const view =
 		(preferredView?.file ? preferredView : null) ??
-		(plugin.app.workspace.getActiveViewOfType(MarkdownView) as MutableMarkdownView | null);
+		plugin.app.workspace.getActiveViewOfType(MarkdownView);
 	if (!view?.file) {
 		debugNativePdf(null, "native export invoked without active markdown view");
 		return await Promise.resolve(invokeOriginal());
@@ -517,7 +524,7 @@ function installCachedReadOverride(plugin: CodeSpacePlugin) {
 	const vault = plugin.app.vault as MutableVault;
 	const originalCachedRead = vault.cachedRead.bind(vault);
 
-	vault.cachedRead = async (file: TFile) => {
+	const wrappedCachedRead = async (file: TFile) => {
 		const session = activeNativeExportSession;
 		if (!session || file.path !== session.sourceFile.path) {
 			return await originalCachedRead(file);
@@ -528,7 +535,7 @@ function installCachedReadOverride(plugin: CodeSpacePlugin) {
 			file: file.path,
 			hit: session.cachedReadHits,
 		});
-		const activeView = plugin.app.workspace.getActiveViewOfType(MarkdownView) as MutableMarkdownView | null;
+		const activeView = plugin.app.workspace.getActiveViewOfType(MarkdownView);
 		return await buildExpandedMarkdown(
 			plugin,
 			activeView,
@@ -536,9 +543,12 @@ function installCachedReadOverride(plugin: CodeSpacePlugin) {
 			session.fallbackMarkdown
 		);
 	};
+	vault.cachedRead = wrappedCachedRead;
 
 	plugin.register(() => {
-		vault.cachedRead = originalCachedRead;
+		if (vault.cachedRead === wrappedCachedRead) {
+			vault.cachedRead = originalCachedRead;
+		}
 		cleanupActiveNativeExportSession();
 	});
 }
@@ -552,7 +562,7 @@ function installMarkdownViewPrintPatch(plugin: CodeSpacePlugin) {
 		return;
 	}
 
-	markdownViewProto.printToPdf = function (this: MutableMarkdownView) {
+	const wrappedPrintToPdf = function (this: MutableMarkdownView) {
 		if (nativeExportInvocationDepth > 0) {
 			return originalPrintToPdf.apply(this);
 		}
@@ -566,9 +576,12 @@ function installMarkdownViewPrintPatch(plugin: CodeSpacePlugin) {
 				nativeExportInvocationDepth = Math.max(0, nativeExportInvocationDepth - 1);
 			});
 	};
+	markdownViewProto.printToPdf = wrappedPrintToPdf;
 
 	plugin.register(() => {
-		markdownViewProto.printToPdf = originalPrintToPdf;
+		if (markdownViewProto.printToPdf === wrappedPrintToPdf) {
+			markdownViewProto.printToPdf = originalPrintToPdf;
+		}
 	});
 }
 
@@ -586,7 +599,7 @@ export function registerNativePdfExportPatch(plugin: CodeSpacePlugin) {
 	const command = commandManager.commands?.[NATIVE_EXPORT_COMMAND_ID];
 	if (command?.callback) {
 		const originalCallback = command.callback;
-		command.callback = () => {
+		const wrappedCallback = () => {
 			if (nativeExportInvocationDepth > 0) {
 				return originalCallback();
 			}
@@ -598,9 +611,12 @@ export function registerNativePdfExportPatch(plugin: CodeSpacePlugin) {
 					nativeExportInvocationDepth = Math.max(0, nativeExportInvocationDepth - 1);
 				});
 		};
+		command.callback = wrappedCallback;
 
 		plugin.register(() => {
-			command.callback = originalCallback;
+			if (command.callback === wrappedCallback) {
+				command.callback = originalCallback;
+			}
 		});
 		return;
 	}
@@ -610,7 +626,7 @@ export function registerNativePdfExportPatch(plugin: CodeSpacePlugin) {
 	}
 
 	const originalExecuteCommandById = commandManager.executeCommandById.bind(commandManager);
-	commandManager.executeCommandById = (commandId: string, ...args: unknown[]) => {
+	const wrappedExecuteCommandById = (commandId: string, ...args: unknown[]) => {
 		if (commandId !== NATIVE_EXPORT_COMMAND_ID || nativeExportInvocationDepth > 0) {
 			return originalExecuteCommandById(commandId, ...args);
 		}
@@ -622,8 +638,11 @@ export function registerNativePdfExportPatch(plugin: CodeSpacePlugin) {
 				nativeExportInvocationDepth = Math.max(0, nativeExportInvocationDepth - 1);
 			});
 	};
+	commandManager.executeCommandById = wrappedExecuteCommandById;
 
 	plugin.register(() => {
-		commandManager.executeCommandById = originalExecuteCommandById;
+		if (commandManager.executeCommandById === wrappedExecuteCommandById) {
+			commandManager.executeCommandById = originalExecuteCommandById;
+		}
 	});
 }

@@ -121,6 +121,8 @@ Obsidian 原生工作流更偏向 Markdown 笔记，对**代码文件的集中�
 **重要提示！**
 - **仅桌面端支持**：由于移动端的沙盒限制，外部挂载在 iOS/Android 上不可用
 - **安全风险**：外部挂载使插件能够访问 Vault 外的文件系统，请**仅挂载可信目录**
+- **路径校验**：源路径必须是 Vault 外部的绝对文件夹路径。Code Space 会拒绝 Vault 自挂载、父子目录循环，以及位于其他符号链接或目录联接下的挂载路径
+- **安全移除**：只有链接仍指向已配置的源目录时，Code Space 才会移除挂载。目标被修改或属于用户自行创建的链接会被标记为不匹配，并保持原样
 - **权限差异**：Windows 上 symlink 可能需要开发者模式或管理员权限；自动模式会先尝试 symlink，再回退到 junction
 - **性能问题**：请不要滥用此功能。你可以管理轻量仓库或进行多仓库联动，但不建议随意挂载过多文件或大型目录
 - **路径稳定性**：外部文件夹的移动或重命名会导致挂载失效，需重新配置
@@ -286,8 +288,12 @@ Code Space 已可在 Obsidian 官方社区插件市场中检索和安装。
 npm install          # 安装依赖
 npm run dev          # 开发构建（文件监视）
 npm run build        # 生产构建
+npm test             # 运行单元测试
 npm run lint         # 运行 ESLint
+npm run dev:copy     # 将构建产物复制到本地 Vault
 ```
+
+`npm run dev:copy` 默认使用 `C:\Nonlinear\ob` 和 `.obsidian`。如 Vault 路径或配置目录不同，请设置 `OBSIDIAN_VAULT_PATH` 或 `OBSIDIAN_CONFIG_DIR`。
 
 ### 项目结构
 

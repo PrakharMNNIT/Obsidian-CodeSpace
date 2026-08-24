@@ -122,6 +122,8 @@ Work across Vault boundaries to manage external project code.
 **Important notes!**
 - **Desktop only**: External mounts are unavailable on iOS/Android due to sandbox restrictions
 - **Security risk**: External mounts allow the plugin to access files outside the Vault. **Only mount folders you trust**
+- **Path validation**: The source must be an absolute folder outside the Vault. Code Space rejects Vault self-mounts, parent/child cycles, and mount paths nested under another symlink or junction
+- **Safe removal**: Code Space removes a mount only when the link still points to its configured source. A changed or user-created link is reported as a target mismatch and is left untouched
 - **Permission differences**: On Windows, symlinks may require Developer Mode or administrator privileges. Auto mode tries symlink first, then falls back to junction
 - **Performance issues**: You can use this for lightweight repositories or multi-repository coordination, but avoid mounting too many files or very large directories
 - **Path stability**: Moving or renaming external folders will break the mount and require reconfiguration
@@ -287,8 +289,12 @@ Use BRAT only if you want to test a development or prerelease build. Install the
 npm install          # Install dependencies
 npm run dev          # Development build (file watching)
 npm run build        # Production build
+npm test             # Run unit tests
 npm run lint         # Run ESLint
+npm run dev:copy     # Copy built artifacts to the local Vault
 ```
+
+`npm run dev:copy` uses `C:\Nonlinear\ob` and `.obsidian` by default. Set `OBSIDIAN_VAULT_PATH` or `OBSIDIAN_CONFIG_DIR` when your Vault uses different paths.
 
 ### Project structure
 

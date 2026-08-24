@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Plugin, FuzzySuggestModal, TFolder, Notice, Platform, TextComponent, ButtonComponent, Modal } from "obsidian";
+import { App, PluginSettingTab, Setting, Plugin, FuzzySuggestModal, TFolder, Notice, Platform, TextComponent, ButtonComponent, Modal, debounce } from "obsidian";
 import CodeSpacePlugin from "./main";
 import { t } from "./lang/helpers";
 import { ExternalMount, ExternalMountLinkType, ExternalMountManager, pickExternalFolder, suggestMountPath } from "./external_mount";
@@ -175,8 +175,56 @@ export const DEFAULT_SETTINGS: CodeSpaceSettings = {
 	ignoredFiles: []
 };
 
+export function normalizeCodeSpaceSettings(value: unknown): CodeSpaceSettings {
+	const raw = value && typeof value === "object" ? value as Partial<CodeSpaceSettings> : {};
+	const dashboard = raw.dashboardState && typeof raw.dashboardState === "object"
+		? raw.dashboardState as Partial<DashboardState>
+		: {};
+	const externalMounts = Array.isArray(raw.externalMounts)
+		? raw.externalMounts.filter((mount): mount is ExternalMount => Boolean(
+			mount &&
+			typeof mount.id === "string" &&
+			typeof mount.sourcePath === "string" &&
+			typeof mount.mountPath === "string"
+		)).map((mount) => ({
+			id: mount.id,
+			sourcePath: mount.sourcePath.trim(),
+			mountPath: mount.mountPath.trim(),
+		}))
+		: [];
+
+	const numberInRange = (candidate: unknown, fallback: number, minimum: number, maximum = Number.POSITIVE_INFINITY) =>
+		typeof candidate === "number" && Number.isFinite(candidate)
+			? Math.min(maximum, Math.max(minimum, candidate))
+			: fallback;
+
+	return {
+		extensions: typeof raw.extensions === "string" && raw.extensions.trim() ? raw.extensions : DEFAULT_SETTINGS.extensions,
+		showLineNumbers: typeof raw.showLineNumbers === "boolean" ? raw.showLineNumbers : DEFAULT_SETTINGS.showLineNumbers,
+		editorFontSize: numberInRange(raw.editorFontSize, DEFAULT_SETTINGS.editorFontSize, 9, 36),
+		embedFontSize: numberInRange(raw.embedFontSize, DEFAULT_SETTINGS.embedFontSize, 9, 36),
+		maxEmbedLines: numberInRange(raw.maxEmbedLines, DEFAULT_SETTINGS.maxEmbedLines, 0),
+		newFileFolderPath: typeof raw.newFileFolderPath === "string" ? raw.newFileFolderPath : "",
+		newFileLocationMode: raw.newFileLocationMode === "current" ? "current" : "custom",
+		dashboardState: {
+			searchQuery: typeof dashboard.searchQuery === "string" ? dashboard.searchQuery : "",
+			filterExt: Array.isArray(dashboard.filterExt) ? dashboard.filterExt.filter((item): item is string => typeof item === "string") : [],
+			filterFolder: Array.isArray(dashboard.filterFolder) ? dashboard.filterFolder.filter((item): item is string => typeof item === "string") : [],
+			sortBy: dashboard.sortBy === "name" || dashboard.sortBy === "type" ? dashboard.sortBy : "date",
+			sortDesc: typeof dashboard.sortDesc === "boolean" ? dashboard.sortDesc : true,
+		},
+		enableExternalMounts: typeof raw.enableExternalMounts === "boolean" ? raw.enableExternalMounts : DEFAULT_SETTINGS.enableExternalMounts,
+		externalMounts,
+		externalMountLinkType: raw.externalMountLinkType === "symlink" || raw.externalMountLinkType === "junction"
+			? raw.externalMountLinkType
+			: "auto",
+		ignoredFiles: Array.isArray(raw.ignoredFiles) ? raw.ignoredFiles.filter((item): item is string => typeof item === "string") : [],
+	};
+}
+
 export class CodeSpaceSettingTab extends PluginSettingTab {
 	plugin: CodeSpacePlugin;
+	private pendingTextSaves: Array<{ run(): unknown; cancel(): unknown }> = [];
 
 	constructor(app: App, plugin: Plugin) {
 		super(app, plugin);
@@ -184,9 +232,11 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
+		this.flushPendingTextSaves();
 		const { containerEl } = this;
 		containerEl.empty();
 
+		const saveExtensions = this.createDebouncedSave(() => this.plugin.saveSettings("extensions"));
 		new Setting(containerEl)
 			.setHeading()
 			.setName(t('SETTINGS_HEADING'));
@@ -198,9 +248,9 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 				text
 					.setPlaceholder(t('SETTINGS_EXTENSIONS_PLACEHOLDER'))
 					.setValue(this.plugin.settings.extensions)
-					.onChange(async (value) => {
+					.onChange((value) => {
 						this.plugin.settings.extensions = value;
-						await this.plugin.saveSettings();
+						saveExtensions();
 					});
 				// Make the textarea larger by default
 				text.inputEl.rows = 6;
@@ -214,10 +264,11 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.showLineNumbers)
 					.onChange(async (value) => {
 						this.plugin.settings.showLineNumbers = value;
-						await this.plugin.saveSettings();
+						await this.plugin.saveSettings("editor");
 					})
 			);
 
+		const saveEditorFontSize = this.createDebouncedSave(() => this.plugin.saveSettings("editor"));
 		new Setting(containerEl)
 			.setName(t('SETTINGS_EDITOR_FONT_SIZE_NAME'))
 			.setDesc(t('SETTINGS_EDITOR_FONT_SIZE_DESC'))
@@ -225,15 +276,16 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 				text
 					.setPlaceholder("16")
 					.setValue(String(this.plugin.settings.editorFontSize))
-					.onChange(async (value) => {
+					.onChange((value) => {
 						const num = parseInt(value);
 						if (!isNaN(num) && num >= 9 && num <= 36) {
 							this.plugin.settings.editorFontSize = num;
-							await this.plugin.saveSettings();
+							saveEditorFontSize();
 						}
 					})
 			);
 
+		const saveEmbedFontSize = this.createDebouncedSave(() => this.plugin.saveSettings("embed"));
 		new Setting(containerEl)
 			.setName(t('SETTINGS_EMBED_FONT_SIZE_NAME'))
 			.setDesc(t('SETTINGS_EMBED_FONT_SIZE_DESC'))
@@ -241,15 +293,16 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 				text
 					.setPlaceholder("13")
 					.setValue(String(this.plugin.settings.embedFontSize))
-					.onChange(async (value) => {
+					.onChange((value) => {
 						const num = parseInt(value);
 						if (!isNaN(num) && num >= 9 && num <= 36) {
 							this.plugin.settings.embedFontSize = num;
-							await this.plugin.saveSettings();
+							saveEmbedFontSize();
 						}
 					})
 			);
 
+		const saveMaxEmbedLines = this.createDebouncedSave(() => this.plugin.saveSettings("embed"));
 		new Setting(containerEl)
 			.setName(t('SETTINGS_MAX_EMBED_LINES_NAME'))
 			.setDesc(t('SETTINGS_MAX_EMBED_LINES_DESC'))
@@ -257,11 +310,11 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 				text
 					.setPlaceholder(t('SETTINGS_MAX_EMBED_LINES_PLACEHOLDER'))
 					.setValue(String(this.plugin.settings.maxEmbedLines))
-					.onChange(async (value) => {
+					.onChange((value) => {
 						const num = parseInt(value);
 						if (!isNaN(num) && num >= 0) {
 							this.plugin.settings.maxEmbedLines = num;
-							await this.plugin.saveSettings();
+							saveMaxEmbedLines();
 						}
 					})
 			);
@@ -275,11 +328,12 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 				dropdown.setValue(this.plugin.settings.newFileLocationMode);
 				dropdown.onChange(async (value) => {
 					this.plugin.settings.newFileLocationMode = value as NewFileLocationMode;
-					await this.plugin.saveSettings();
+					await this.plugin.saveSettings("none");
 					this.display();
 				});
 			});
 
+		const saveNewFileFolderPath = this.createDebouncedSave(() => this.plugin.saveSettings("none"));
 		if (this.plugin.settings.newFileLocationMode === 'custom') {
 			new Setting(containerEl)
 				.setName(t('SETTINGS_NEW_FILE_CUSTOM_PATH_NAME'))
@@ -288,9 +342,9 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 					text
 						.setPlaceholder(t('SETTINGS_NEW_FILE_FOLDER_PLACEHOLDER'))
 						.setValue(this.plugin.settings.newFileFolderPath)
-						.onChange(async (value) => {
+						.onChange((value) => {
 							this.plugin.settings.newFileFolderPath = value;
-							await this.plugin.saveSettings();
+							saveNewFileFolderPath();
 						});
 				})
 				.addButton((button) => {
@@ -299,7 +353,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 						.onClick(() => {
 							new FolderSuggestModal(this.app, (folder) => {
 								this.plugin.settings.newFileFolderPath = folder.path;
-								void this.plugin.saveSettings();
+								void this.plugin.saveSettings("none");
 								this.display();
 							}).open();
 						});
@@ -323,6 +377,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						const previousState = this.plugin.settings.enableExternalMounts ?? true;
 						this.plugin.settings.enableExternalMounts = value;
+						let failedMounts = 0;
 
 						// 关闭时自动取消所有挂载，但保留配置
 						if (previousState && !value && Platform.isDesktopApp) {
@@ -331,10 +386,15 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 								try {
 									await mountManager.removeMount(mount);
 								} catch {
-									// 忽略错误，继续处理其他挂载
+									failedMounts += 1;
 								}
 							}
-							new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_ALL_REMOVED"));
+							if (failedMounts > 0) {
+								this.plugin.settings.enableExternalMounts = true;
+								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_REMOVE_PARTIAL").replace("{0}", String(failedMounts)));
+							} else {
+								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_ALL_REMOVED"));
+							}
 						}
 						// 重新打开时可以重新挂载（可选）
 						else if (!previousState && value && Platform.isDesktopApp) {
@@ -343,13 +403,17 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 								try {
 									await mountManager.createMount(mount, this.plugin.settings.externalMountLinkType);
 								} catch {
-									// 忽略错误，继续处理其他挂载
+									failedMounts += 1;
 								}
 							}
-							new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_ALL_RESTORED"));
+							if (failedMounts > 0) {
+								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_RESTORE_PARTIAL").replace("{0}", String(failedMounts)));
+							} else {
+								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_ALL_RESTORED"));
+							}
 						}
 
-						await this.plugin.saveSettings();
+						await this.plugin.saveSettings("dashboard");
 						this.display();
 					})
 			);
@@ -378,7 +442,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 					dropdown.setValue(this.plugin.settings.externalMountLinkType ?? "auto");
 					dropdown.onChange(async (value) => {
 						this.plugin.settings.externalMountLinkType = value as ExternalMountLinkType;
-						await this.plugin.saveSettings();
+						await this.plugin.saveSettings("none");
 					});
 				});
 		}
@@ -388,6 +452,8 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 			"missing-target": t("SETTINGS_EXTERNAL_MOUNT_STATUS_MISSING"),
 			"source-missing": t("SETTINGS_EXTERNAL_MOUNT_STATUS_SOURCE_MISSING"),
 			conflict: t("SETTINGS_EXTERNAL_MOUNT_STATUS_CONFLICT"),
+			"mismatched-target": t("SETTINGS_EXTERNAL_MOUNT_STATUS_MISMATCHED"),
+			"unsafe-path": t("SETTINGS_EXTERNAL_MOUNT_STATUS_UNSAFE"),
 			unavailable: t("SETTINGS_EXTERNAL_MOUNT_STATUS_UNAVAILABLE")
 		};
 
@@ -430,13 +496,13 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 			setting.addButton((button) => {
 				button
 					.setButtonText(t("SETTINGS_EXTERNAL_MOUNT_REMOVE"))
-					.setWarning()
+					.setClass("mod-warning")
 					.onClick(() => {
 						void (async () => {
 							try {
 								await mountManager.removeMount(mount);
 								this.plugin.settings.externalMounts = this.plugin.settings.externalMounts.filter((item) => item.id !== mount.id);
-								await this.plugin.saveSettings();
+								await this.plugin.saveSettings("dashboard");
 								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_REMOVED"));
 								this.display();
 							} catch (error) {
@@ -462,7 +528,12 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 									new Notice(t("SETTINGS_EXTERNAL_MOUNT_INVALID"));
 									return;
 								}
-								if (this.plugin.settings.externalMounts.some((item) => item.mountPath === normalizedMountPath)) {
+								const normalizedMountKey = Platform.isWin ? normalizedMountPath.toLowerCase() : normalizedMountPath;
+								if (this.plugin.settings.externalMounts.some((item) => {
+									const existingPath = mountManager.normalizeMountPath(item.mountPath);
+									const existingKey = Platform.isWin ? existingPath.toLowerCase() : existingPath;
+									return existingKey === normalizedMountKey;
+								})) {
 									new Notice(t("SETTINGS_EXTERNAL_MOUNT_DUPLICATE"));
 									return;
 								}
@@ -476,7 +547,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 								try {
 									await mountManager.createMount(mount, this.plugin.settings.externalMountLinkType);
 									this.plugin.settings.externalMounts.push(mount);
-									await this.plugin.saveSettings();
+									await this.plugin.saveSettings("dashboard");
 									new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_CREATED"));
 									this.display();
 								} catch (error) {
@@ -486,5 +557,24 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 						}).open();
 					});
 			});
+	}
+
+	hide(): void {
+		this.flushPendingTextSaves();
+		super.hide();
+	}
+
+	private createDebouncedSave(save: () => Promise<void>) {
+		const debouncedSave = debounce(save, 300, true);
+		this.pendingTextSaves.push(debouncedSave);
+		return debouncedSave;
+	}
+
+	private flushPendingTextSaves(): void {
+		for (const save of this.pendingTextSaves) {
+			save.run();
+			save.cancel();
+		}
+		this.pendingTextSaves = [];
 	}
 }

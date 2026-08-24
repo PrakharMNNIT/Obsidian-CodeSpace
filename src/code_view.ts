@@ -1,36 +1,20 @@
-import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon, Platform } from "obsidian";
+import { TextFileView, WorkspaceLeaf, TFile, Notice, App, setIcon, Platform, Modal, ButtonComponent } from "obsidian";
 import { EditorView, keymap, highlightSpecialChars, drawSelection, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from "@codemirror/view";
-import { EditorState, Compartment, Extension, Prec, Transaction } from "@codemirror/state";
-import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit, StreamLanguage } from "@codemirror/language";
-import { shell } from "@codemirror/legacy-modes/mode/shell";
-import { powerShell } from "@codemirror/legacy-modes/mode/powershell";
-import { cmake } from "@codemirror/legacy-modes/mode/cmake";
-import { dockerFile } from "@codemirror/legacy-modes/mode/dockerfile";
-import { diff } from "@codemirror/legacy-modes/mode/diff";
-import { lua } from "@codemirror/legacy-modes/mode/lua";
-import { perl } from "@codemirror/legacy-modes/mode/perl";
-import { ruby } from "@codemirror/legacy-modes/mode/ruby";
-import { kotlin } from "@codemirror/legacy-modes/mode/clike";
-import { octave } from "@codemirror/legacy-modes/mode/octave";
+import { EditorState, Compartment, Extension, Prec, Transaction, Text } from "@codemirror/state";
+import { syntaxHighlighting, bracketMatching, foldGutter, indentOnInput, HighlightStyle, indentUnit } from "@codemirror/language";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets } from "@codemirror/autocomplete";
 import { SearchQuery, highlightSelectionMatches } from "@codemirror/search";
-import { python } from "@codemirror/lang-python";
-import { cpp } from "@codemirror/lang-cpp";
-import { javascript } from "@codemirror/lang-javascript";
-import { html } from "@codemirror/lang-html";
-import { css } from "@codemirror/lang-css";
-import { sql } from "@codemirror/lang-sql";
-import { php } from "@codemirror/lang-php";
-import { rust } from "@codemirror/lang-rust";
-import { java } from "@codemirror/lang-java";
-import { go } from "@codemirror/lang-go";
-import { yaml } from "@codemirror/lang-yaml";
-import { xml } from "@codemirror/lang-xml";
-import { r } from "codemirror-lang-r";
 import { tags } from "@lezer/highlight";
 import CodeSpacePlugin from "./main";
 import { t } from "./lang/helpers";
+import {
+	collectSearchMatches,
+	findNextSearchMatch,
+	findPreviousSearchMatch,
+	selectionMatchesQuery,
+} from "./search_utils";
+import { LANGUAGE_PACKAGES } from "./language_registry";
 
 export const VIEW_TYPE_CODE_SPACE = "code-space-view";
 
@@ -242,112 +226,26 @@ class CustomSearchPanel {
 
 	private findNext() {
 		const query = this.getQuery();
-		if (!query.search) return;
-
 		const { to } = this.view.state.selection.main;
-		const searchString = this.view.state.doc.toString();
+		const match = findNextSearchMatch(query, this.view.state.doc, to);
+		if (!match) return;
 
-		try {
-			let searchPos = to;
-			let match: { from: number; to: number } | null = null;
-
-			// 创建正则表达式用于搜索
-			let regex: RegExp;
-			const flags = query.caseSensitive ? "g" : "gi";
-			const pattern = query.regexp ? query.search : this.escapeRegex(query.search);
-
-			if (query.wholeWord) {
-				regex = new RegExp(`\\b${pattern}\\b`, flags);
-			} else {
-				regex = new RegExp(pattern, flags);
-			}
-
-			// 从当前位置开始查找
-			regex.lastIndex = searchPos;
-			let execResult = regex.exec(searchString);
-
-			if (execResult) {
-				match = { from: execResult.index, to: execResult.index + execResult[0].length };
-			} else {
-				// 如果没找到，从头开始搜索
-				regex.lastIndex = 0;
-				execResult = regex.exec(searchString);
-				if (execResult) {
-					match = { from: execResult.index, to: execResult.index + execResult[0].length };
-				}
-			}
-
-			if (match) {
-				this.view.dispatch({
-					selection: { anchor: match.from, head: match.to },
-					effects: [EditorView.scrollIntoView(match.from, { x: "nearest", y: "center" })]
-				});
-			}
-		} catch (error) {
-			console.error("Search error:", error);
-		}
+		this.view.dispatch({
+			selection: { anchor: match.from, head: match.to },
+			effects: [EditorView.scrollIntoView(match.from, { x: "nearest", y: "center" })]
+		});
 	}
 
 	private findPrevious() {
 		const query = this.getQuery();
-		if (!query.search) return;
-
 		const { from } = this.view.state.selection.main;
-		const searchString = this.view.state.doc.toString();
+		const match = findPreviousSearchMatch(query, this.view.state.doc, from);
+		if (!match) return;
 
-		try {
-			let searchPos = from;
-
-			// 创建正则表达式用于搜索
-			let regex: RegExp;
-			const flags = query.caseSensitive ? "g" : "gi";
-			const pattern = query.regexp ? query.search : this.escapeRegex(query.search);
-
-			if (query.wholeWord) {
-				regex = new RegExp(`\\b${pattern}\\b`, flags);
-			} else {
-				regex = new RegExp(pattern, flags);
-			}
-
-			// 从当前位置向后查找
-			let lastMatch: { from: number; to: number } | null = null;
-			let execResult: RegExpExecArray | null;
-
-			while ((execResult = regex.exec(searchString)) !== null) {
-				if (execResult.index < searchPos) {
-					lastMatch = { from: execResult.index, to: execResult.index + execResult[0].length };
-				} else {
-					break;
-				}
-			}
-
-			if (lastMatch) {
-				this.view.dispatch({
-					selection: { anchor: lastMatch.from, head: lastMatch.to },
-					effects: [EditorView.scrollIntoView(lastMatch.from, { x: "nearest", y: "center" })]
-				});
-			} else {
-				// 循环搜索：如果前面没有匹配项，找到文档中的最后一个匹配项
-				regex.lastIndex = 0;
-				let finalMatch: { from: number; to: number } | null = null;
-				while ((execResult = regex.exec(searchString)) !== null) {
-					finalMatch = { from: execResult.index, to: execResult.index + execResult[0].length };
-				}
-
-				if (finalMatch) {
-					this.view.dispatch({
-						selection: { anchor: finalMatch.from, head: finalMatch.to },
-						effects: [EditorView.scrollIntoView(finalMatch.from, { x: "nearest", y: "center" })]
-					});
-				}
-			}
-		} catch (error) {
-			console.error("Search error:", error);
-		}
-	}
-
-	private escapeRegex(text: string): string {
-		return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		this.view.dispatch({
+			selection: { anchor: match.from, head: match.to },
+			effects: [EditorView.scrollIntoView(match.from, { x: "nearest", y: "center" })]
+		});
 	}
 
 	private replace() {
@@ -356,14 +254,7 @@ class CustomSearchPanel {
 		if (!query.search) return;
 
 		const { from, to } = this.view.state.selection.main;
-		const currentText = this.view.state.sliceDoc(from, to);
-
-		// 检查当前选中的文本是否匹配搜索词
-		const isMatch = query.caseSensitive ?
-			currentText === query.search :
-			currentText.toLowerCase() === query.search.toLowerCase();
-
-		if (isMatch) {
+		if (selectionMatchesQuery(query, this.view.state.doc, from, to)) {
 			this.view.dispatch({
 				changes: { from, to, insert: query.replace },
 				selection: { anchor: from, head: from + query.replace.length }
@@ -380,36 +271,13 @@ class CustomSearchPanel {
 		// Allow empty replacement (delete matches) by only requiring a search term.
 		if (!query.search) return;
 
-		const searchString = this.view.state.doc.toString();
-		const changes: { from: number; to: number; insert: string }[] = [];
+		const changes = collectSearchMatches(query, this.view.state.doc).map((match) => ({
+			...match,
+			insert: query.replace,
+		}));
 
-		try {
-			let regex: RegExp;
-			const flags = query.caseSensitive ? "g" : "gi";
-			const pattern = query.regexp ? query.search : this.escapeRegex(query.search);
-
-			if (query.wholeWord) {
-				regex = new RegExp(`\\b${pattern}\\b`, flags);
-			} else {
-				regex = new RegExp(pattern, flags);
-			}
-
-			// 查找所有匹配
-			let execResult: RegExpExecArray | null;
-
-			while ((execResult = regex.exec(searchString)) !== null) {
-				changes.push({
-					from: execResult.index,
-					to: execResult.index + execResult[0].length,
-					insert: query.replace
-				});
-			}
-
-			if (changes.length > 0) {
-				this.view.dispatch({ changes });
-			}
-		} catch (error) {
-			console.error("Replace all error:", error);
+		if (changes.length > 0) {
+			this.view.dispatch({ changes });
 		}
 	}
 
@@ -451,124 +319,6 @@ class CustomSearchPanel {
 	}
 }
 
-
-// Language package mapping to ensure proper bundling
-const LANGUAGE_PACKAGES: Record<string, Extension> = {
-	// Python
-	'py': python(),
-	// C/C++
-	'c': cpp(),
-	'cpp': cpp(),
-	'h': cpp(),
-	'hpp': cpp(),
-	'cc': cpp(),
-	'cxx': cpp(),
-	// JavaScript/TypeScript/JSON
-	'js': javascript(),
-	'ts': javascript({ typescript: true }),
-	'jsx': javascript({ jsx: true }),
-	'tsx': javascript({ typescript: true, jsx: true }),
-	'json': javascript({ jsx: true }),
-	'mjs': javascript(),
-	'cjs': javascript(),
-	// HTML
-	'html': html(),
-	'htm': html(),
-	'xhtml': html(),
-	// CSS
-	'css': css(),
-	'scss': css(),
-	'sass': css(),
-	'less': css(),
-	// SQL
-	'sql': sql(),
-	// PHP
-	'php': php(),
-	// Rust
-	'rs': rust(),
-	// Java / C#
-	'java': java(),
-	'cs': java(),
-	// Go
-	'go': go(),
-	// YAML
-	'yaml': yaml(),
-	'yml': yaml(),
-	// XML
-	'xml': xml(),
-	// R
-	'r': r(),
-	// XML-based formats (reuse xml highlighter, not in default extensions)
-	'urdf': xml(),   // ROS URDF robot description
-	'xacro': xml(),  // ROS Xacro macro
-	'svg': xml(),    // Scalable Vector Graphics
-	'xsd': xml(),    // XML Schema Definition
-	'xsl': xml(),    // XML Stylesheet
-	'xslt': xml(),   // XSL Transformations
-	'wsdl': xml(),   // Web Services Description
-	'plist': xml(),  // Property List (macOS/iOS)
-	'csproj': xml(), // C# Project file
-	'vcxproj': xml(),// Visual C++ Project
-	'props': xml(),  // MSBuild properties
-	'targets': xml(),// MSBuild targets
-	'config': xml(), // Generic config
-	// C/C++ family (reuse cpp highlighter)
-	'ino': cpp(),    // Arduino sketches
-	'pde': cpp(),    // Processing sketches
-	'nut': cpp(),    // Squirrel scripting
-	'cu': cpp(),     // CUDA source
-	'cuh': cpp(),    // CUDA header
-	'glsl': cpp(),   // OpenGL Shading Language
-	'vert': cpp(),   // Vertex shader
-	'frag': cpp(),   // Fragment shader
-	'hlsl': cpp(),   // High Level Shading Language
-	'mm': cpp(),     // Objective-C++
-	'swift': cpp(),  // Swift (C-like syntax)
-	// Java family (reuse java highlighter)
-	'kt': StreamLanguage.define(kotlin),  // Kotlin
-	'kts': StreamLanguage.define(kotlin), // Kotlin script
-	'scala': java(), // Scala
-	'groovy': java(),// Groovy
-	'gradle': java(),// Gradle build script
-	// JavaScript/TypeScript family (reuse javascript highlighter)
-	'json5': javascript(),  // JSON5
-	'jsonc': javascript(),  // JSON with comments
-	'vue': javascript(),    // Vue single file component
-	'svelte': javascript(), // Svelte component
-	'astro': javascript(),  // Astro framework
-	// Python family (reuse python highlighter)
-	'pyx': python(),  // Cython
-	'pxd': python(),  // Cython declaration
-	'pxi': python(),  // Cython include
-	'ipy': python(),  // IPython script
-	// Config/Data formats (reuse yaml highlighter)
-	'toml': yaml(),   // TOML config
-	'ini': yaml(),    // INI config
-	'cfg': yaml(),    // Generic config
-	'conf': yaml(),   // Generic config
-	// Shell scripts (using legacy-modes StreamLanguage)
-	'sh': StreamLanguage.define(shell),
-	'bash': StreamLanguage.define(shell),
-	'zsh': StreamLanguage.define(shell),
-	'ps1': StreamLanguage.define(powerShell),
-	'psm1': StreamLanguage.define(powerShell),
-	'psd1': StreamLanguage.define(powerShell),
-	// Build systems (using legacy-modes)
-	'cmake': StreamLanguage.define(cmake),
-	'dockerfile': StreamLanguage.define(dockerFile),
-	// Other languages (using legacy-modes)
-	'diff': StreamLanguage.define(diff),
-	'patch': StreamLanguage.define(diff),
-	'lua': StreamLanguage.define(lua),
-	'pl': StreamLanguage.define(perl),
-	'pm': StreamLanguage.define(perl),
-	'rb': StreamLanguage.define(ruby),
-	'erb': StreamLanguage.define(ruby),
-	'm': StreamLanguage.define(octave),
-	// Plain text (no highlighting)
-	'md': [],
-	'txt': [],
-};
 
 // 1. 定义亮色模式高亮 (VS Code Light 风格)
 const myLightHighlightStyle = HighlightStyle.define([
@@ -768,6 +518,57 @@ const baseTheme = EditorView.theme({
 	}
 });
 
+type ExternalConflictResolution = "reload" | "overwrite" | "cancel";
+
+class ExternalConflictModal extends Modal {
+	private settled = false;
+
+	constructor(
+		app: App,
+		fileName: string,
+		private resolve: (resolution: ExternalConflictResolution) => void,
+	) {
+		super(app);
+		this.setTitle(t("MODAL_EXTERNAL_CONFLICT_TITLE"));
+		this.contentEl.createDiv({
+			cls: "setting-item-description",
+			text: t("MODAL_EXTERNAL_CONFLICT_DESC").replace("{0}", fileName),
+		});
+
+		const buttons = this.contentEl.createDiv({ cls: "modal-button-container" });
+		new ButtonComponent(buttons)
+			.setButtonText(t("MODAL_EXTERNAL_CONFLICT_RELOAD"))
+			.setClass("mod-warning")
+			.onClick(() => this.choose("reload"));
+		new ButtonComponent(buttons)
+			.setButtonText(t("MODAL_EXTERNAL_CONFLICT_OVERWRITE"))
+			.setClass("mod-warning")
+			.onClick(() => this.choose("overwrite"));
+		new ButtonComponent(buttons)
+			.setButtonText(t("MODAL_EXTERNAL_CONFLICT_CANCEL"))
+			.onClick(() => this.choose("cancel"));
+	}
+
+	private choose(resolution: ExternalConflictResolution): void {
+		this.settled = true;
+		this.resolve(resolution);
+		this.close();
+	}
+
+	onClose(): void {
+		super.onClose();
+		if (!this.settled) {
+			this.resolve("cancel");
+		}
+	}
+}
+
+function requestExternalConflictResolution(app: App, fileName: string): Promise<ExternalConflictResolution> {
+	return new Promise((resolve) => {
+		new ExternalConflictModal(app, fileName, resolve).open();
+	});
+}
+
 export class CodeSpaceView extends TextFileView {
 	editorView: EditorView;
 	themeCompartment: Compartment;
@@ -780,6 +581,14 @@ export class CodeSpaceView extends TextFileView {
 	private searchPanel?: CustomSearchPanel; // 自定义搜索面板
 	private rootEl?: HTMLElement;
 	private cleanupMobileViewportFix?: () => void;
+	private savedDoc: Text | null = null;
+	private baselineMtime = 0;
+	private externalConflict = false;
+	private savePromise: Promise<void> | null = null;
+	private saveRequested = false;
+	private expectedSelfWrite: { content: string; expiresAt: number } | null = null;
+	private editorInitFrame: number | null = null;
+	private isClosed = false;
 
 	// 必需方法：告诉 Obsidian 这个视图可以接受哪些扩展名
 	static canAcceptExtension(extension: string): boolean {
@@ -960,38 +769,84 @@ export class CodeSpaceView extends TextFileView {
 		};
 	}
 
-	// 重写 save 方法，只在真正有未保存修改时才保存
 	async save(): Promise<void> {
-		// 如果没有未保存修改，直接返回，不修改文件
-		if (!this.isDirty) {
+		if (!this.isDirty || !this.file || !this.editorView) return;
+
+		if (this.savePromise) {
+			this.saveRequested = true;
+			await this.savePromise;
 			return;
 		}
 
-		if (!this.file) return;
+		this.savePromise = this.runSaveLoop();
+		try {
+			await this.savePromise;
+		} finally {
+			this.savePromise = null;
+		}
+	}
+
+	private async runSaveLoop(): Promise<void> {
+		do {
+			this.saveRequested = false;
+			const saved = await this.saveCurrentSnapshot();
+			if (!saved) return;
+		} while (this.saveRequested && this.isDirty);
+	}
+
+	private async saveCurrentSnapshot(): Promise<boolean> {
+		if (!this.file || !this.editorView || !this.isDirty) return true;
+
+		await this.detectMissedExternalChange();
+		if (this.externalConflict) {
+			const resolution = await requestExternalConflictResolution(this.app, this.file.name);
+			if (resolution === "cancel") return false;
+			if (resolution === "reload") {
+				await this.loadFileContent();
+				return false;
+			}
+			this.externalConflict = false;
+		}
+
+		const snapshot = this.editorView.state.doc;
+		const content = snapshot.toString();
+		this.expectedSelfWrite = { content, expiresAt: Date.now() + 2000 };
 
 		try {
-			// 先清除 dirty 状态，避免保存时触发 modify 事件被误判为外部修改
-			this.isDirty = false;
+			await this.app.vault.modify(this.file, content);
+			this.savedDoc = snapshot;
+			this.data = content;
+			this.baselineMtime = this.file.stat.mtime;
+			this.isDirty = !this.editorView.state.doc.eq(snapshot);
 			this.updateTitle();
 
-			// 使用 Obsidian 的标准保存方法
-			await this.app.vault.modify(this.file, this.editorView.state.doc.toString());
-
-			// 更新缓存
-			this.data = this.editorView.state.doc.toString();
-
-			// 保存成功后，更新侧边栏大纲
-			type AppWithPlugins = App & { plugins: { getPlugin(id: string): CodeSpacePlugin | undefined } };
-			const plugin = (this.app as unknown as AppWithPlugins).plugins.getPlugin("code-space");
-			if (plugin && this.file) {
-				void plugin.updateOutline(this.file, this.editorView.state.doc.toString());
+			const plugin = this.getPlugin();
+			if (plugin) {
+				void plugin.updateOutline(this.file, content);
 			}
+			return true;
 		} catch (error) {
-			// 保存失败，恢复 dirty 状态
+			this.expectedSelfWrite = null;
 			this.isDirty = true;
 			this.updateTitle();
 			console.error("Code Space: Failed to save file:", error);
 			new Notice(t('NOTICE_SAVE_FAIL'));
+			return false;
+		}
+	}
+
+	private async detectMissedExternalChange(): Promise<void> {
+		if (!this.file || !this.baselineMtime || this.file.stat.mtime === this.baselineMtime) return;
+
+		try {
+			const diskContent = await this.app.vault.read(this.file);
+			if (diskContent !== this.data) {
+				this.externalConflict = true;
+				return;
+			}
+			this.baselineMtime = this.file.stat.mtime;
+		} catch {
+			this.externalConflict = true;
 		}
 	}
 
@@ -1062,15 +917,24 @@ export class CodeSpaceView extends TextFileView {
 
 		// 文件加载完成，清除 dirty 状态
 		this.isDirty = false;
+		this.externalConflict = false;
+		this.baselineMtime = file.stat.mtime;
+		if (this.editorView) {
+			this.savedDoc = this.editorView.state.doc;
+		}
 		this.updateTitle();
 	}
 
 	async onOpen(): Promise<void> {
 		await Promise.resolve(); // Required for async function
+		this.isClosed = false;
+		const viewWindow = this.containerEl.ownerDocument.defaultView ?? activeWindow;
 
 		// Use requestAnimationFrame to ensure DOM is ready, especially after "Move to New Window"
 		// which may recreate the view before the container structure is fully ready.
 		const initEditor = () => {
+			this.editorInitFrame = null;
+			if (this.isClosed) return;
 			// 从设置中初始化字体大小
 			const plugin = this.getPlugin();
 			if (plugin && plugin.settings) {
@@ -1081,7 +945,7 @@ export class CodeSpaceView extends TextFileView {
 			if (!container) {
 				console.warn("Code Space: Container not ready, retrying...");
 				// Retry after a short delay if container is not ready yet
-				window.requestAnimationFrame(initEditor);
+				this.editorInitFrame = viewWindow.requestAnimationFrame(initEditor);
 				return;
 			}
 			container.empty();
@@ -1096,7 +960,7 @@ export class CodeSpaceView extends TextFileView {
 			this.initCodeMirror(root);
 		};
 
-		window.requestAnimationFrame(initEditor);
+		this.editorInitFrame = viewWindow.requestAnimationFrame(initEditor);
 	}
 
 	private initCodeMirror(root: HTMLElement): void {
@@ -1160,23 +1024,7 @@ export class CodeSpaceView extends TextFileView {
 						return;
 					}
 
-					// 比较新旧内容，只有真的改变了才标记为 dirty
-					const oldContent = this.data;
-					const newContent = update.state.doc.toString();
-
-					if (oldContent !== newContent) {
-						// 只有内容真的改变了才标记为 dirty
-						if (!this.isDirty) {
-							this.isDirty = true;
-						}
-					} else {
-						// 内容没变，确保不是 dirty
-						if (this.isDirty) {
-							this.isDirty = false;
-						}
-					}
-
-					// 只在状态改变时更新标题
+					this.isDirty = this.savedDoc ? !update.state.doc.eq(this.savedDoc) : true;
 					this.updateTitle();
 				}
 			})
@@ -1189,6 +1037,8 @@ export class CodeSpaceView extends TextFileView {
 				this.themeCompartment.of(this.getThemeExtension())
 			]
 		});
+		this.savedDoc = state.doc;
+		this.baselineMtime = this.file?.stat.mtime ?? 0;
 
 		this.editorView = new EditorView({
 			state,
@@ -1296,20 +1146,39 @@ export class CodeSpaceView extends TextFileView {
 
 		// 监听文件修改事件（外部编辑）
 		this.registerEvent(this.app.vault.on("modify", (file: TFile) => {
-			// 检查修改的文件是否是当前打开的文件
 			if (this.file && file.path === this.file.path) {
-				// 如果有未保存的修改，不要重新加载（保护用户的编辑）
-				if (this.isDirty) {
-					console.debug("Code Space: File modified externally but has unsaved changes");
-					new Notice(t('NOTICE_MODIFIED_EXTERNALLY'), 5000);
-					return;
-				}
-
-				// 没有未保存的修改，直接刷新
-				console.debug("Code Space: File modified externally, reloading...");
-				void this.loadFileContent();
+				void this.handleFileModified(file);
 			}
 		}));
+	}
+
+	private async handleFileModified(file: TFile): Promise<void> {
+		const expectedWrite = this.expectedSelfWrite;
+		if (expectedWrite) {
+			if (Date.now() <= expectedWrite.expiresAt) {
+				try {
+					const diskContent = await this.app.vault.read(file);
+					if (diskContent === expectedWrite.content) {
+						this.expectedSelfWrite = null;
+						this.baselineMtime = file.stat.mtime;
+						return;
+					}
+				} catch {
+					// Fall through and treat the event as an external conflict.
+				}
+			}
+			this.expectedSelfWrite = null;
+		}
+
+		if (this.isDirty) {
+			if (!this.externalConflict) {
+				new Notice(t('NOTICE_MODIFIED_EXTERNALLY'), 5000);
+			}
+			this.externalConflict = true;
+			return;
+		}
+
+		await this.loadFileContent();
 	}
 
 	async loadFileContent() {
@@ -1325,26 +1194,37 @@ export class CodeSpaceView extends TextFileView {
 				// 内容一致，不需要重新加载编辑器，从而保留光标位置
 				// 但仍需更新缓存和状态
 				this.data = content;
+				this.savedDoc = this.editorView.state.doc;
+				this.baselineMtime = this.file.stat.mtime;
 				this.isDirty = false;
+				this.externalConflict = false;
 				this.updateTitle();
 				console.debug("Code Space: File content matches editor content, skipping reload to preserve cursor");
 				return;
 			}
 
 			// 更新编辑器内容
-			this.editorView.dispatch({
-				changes: {
-					from: 0,
-					to: this.editorView.state.doc.length,
-					insert: content
-				}
-			});
+			this.isSettingData = true;
+			try {
+				this.editorView.dispatch({
+					changes: {
+						from: 0,
+						to: this.editorView.state.doc.length,
+						insert: content
+					}
+				});
+			} finally {
+				this.isSettingData = false;
+			}
 
 			// 更新缓存的文件内容
 			this.data = content;
+			this.savedDoc = this.editorView.state.doc;
+			this.baselineMtime = this.file.stat.mtime;
 
 			// 清除 dirty 状态（因为内容已经从磁盘重新加载）
 			this.isDirty = false;
+			this.externalConflict = false;
 			this.updateTitle();
 
 			console.debug("Code Space: File content reloaded from disk");
@@ -1354,6 +1234,12 @@ export class CodeSpaceView extends TextFileView {
 	}
 
 	async onClose(): Promise<void> {
+		this.isClosed = true;
+		if (this.editorInitFrame !== null) {
+			const viewWindow = this.containerEl.ownerDocument.defaultView ?? activeWindow;
+			viewWindow.cancelAnimationFrame(this.editorInitFrame);
+			this.editorInitFrame = null;
+		}
 		// 视图关闭前自动保存（如果内容已修改）
 		if (this.isDirty && this.file) {
 			console.debug("Code Space: Auto-saving on close...");
@@ -1383,17 +1269,19 @@ export class CodeSpaceView extends TextFileView {
 		if (clear && this.editorView) {
 			// 标记为正在设置数据，避免触发 dirty
 			this.isSettingData = true;
-
-			this.editorView.dispatch({
-				changes: { from: 0, to: this.editorView.state.doc.length, insert: data },
-				annotations: [Transaction.addToHistory.of(false)]
-			});
-
-			// dispatch 完成后清除标志（使用 setTimeout 确保在事件循环中执行）
-			const ownerWindow = this.rootEl?.ownerDocument.defaultView ?? activeWindow;
-			ownerWindow.setTimeout(() => {
+			try {
+				this.editorView.dispatch({
+					changes: { from: 0, to: this.editorView.state.doc.length, insert: data },
+					annotations: [Transaction.addToHistory.of(false)]
+				});
+			} finally {
 				this.isSettingData = false;
-			}, 0);
+			}
+			this.savedDoc = this.editorView.state.doc;
+			this.baselineMtime = this.file?.stat.mtime ?? 0;
+			this.externalConflict = false;
+			this.isDirty = false;
+			this.updateTitle();
 		}
 	}
 

@@ -25,6 +25,10 @@
 		]
 	},
 	"include": [
-		"src/**/*.ts"
+		"src/**/*.ts",
+		"tests/**/*.ts",
+		"scripts/**/*.mjs",
+		"vitest.config.ts",
+		"eslint.config.mts"
 	]
 }

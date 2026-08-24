@@ -1,9 +1,8 @@
-import tseslint from 'typescript-eslint';
 import obsidianmd from "eslint-plugin-obsidianmd";
 import globals from "globals";
-import { globalIgnores } from "eslint/config";
+import { defineConfig, globalIgnores } from "eslint/config";
 
-export default tseslint.config(
+export default defineConfig(
 	{
 		languageOptions: {
 			globals: {
@@ -12,9 +11,8 @@ export default tseslint.config(
 				activeWindow: "readonly",
 			},
 			parserOptions: {
-				projectService: {
+			projectService: {
 					allowDefaultProject: [
-						'eslint.config.js',
 						'manifest.json'
 					]
 				},
@@ -24,6 +22,17 @@ export default tseslint.config(
 		},
 	},
 	...obsidianmd.configs.recommended,
+	{
+		files: ["tests/**/*", "scripts/**/*", "vitest.config.ts"],
+		languageOptions: {
+			globals: globals.node,
+		},
+		rules: {
+			"obsidianmd/no-nodejs-modules": "off",
+			"obsidianmd/no-global-this": "off",
+			"no-undef": "off",
+		},
+	},
 	globalIgnores([
 		"node_modules",
 		"dist",

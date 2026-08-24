@@ -3,6 +3,8 @@ import { App, FileSystemAdapter, Platform, normalizePath } from "obsidian";
 type FsPromises = {
 	stat(path: string): Promise<FsStats>;
 	lstat(path: string): Promise<FsStats>;
+	realpath(path: string): Promise<string>;
+	readlink(path: string): Promise<string>;
 	mkdir(path: string, options: { recursive: boolean }): Promise<void>;
 	symlink(target: string, path: string, type?: SymlinkType): Promise<void>;
 	unlink(path: string): Promise<void>;
@@ -13,6 +15,8 @@ type PathModule = {
 	dirname(path: string): string;
 	basename(path: string): string;
 	isAbsolute(path: string): boolean;
+	relative(from: string, to: string): string;
+	resolve(...parts: string[]): string;
 };
 type FsStats = {
 	isDirectory(): boolean;
@@ -57,6 +61,8 @@ export type ExternalMountStatusState =
 	| "missing-target"
 	| "source-missing"
 	| "conflict"
+	| "mismatched-target"
+	| "unsafe-path"
 	| "unavailable";
 
 export interface ExternalMountStatus {
@@ -90,7 +96,7 @@ export class ExternalMountManager {
 		if (!trimmed) {
 			return "";
 		}
-		return normalizePath(trimmed).replace(/^\/+/, "");
+		return normalizePath(trimmed).replace(/^\/+/, "").replace(/\/+$/, "");
 	}
 
 	validateMountPath(mountPath: string): void {
@@ -101,8 +107,12 @@ export class ExternalMountManager {
 		if (pathModule.isAbsolute(mountPath)) {
 			throw new Error("Mount path must be vault-relative");
 		}
-		if (mountPath.split("/").some((segment) => segment === "..")) {
-			throw new Error("Mount path cannot contain ..");
+		const segments = mountPath.split("/");
+		if (segments.some((segment) => segment === ".." || segment === ".")) {
+			throw new Error("Mount path cannot contain . or ..");
+		}
+		if (Platform.isWin && segments.some((segment) => segment.includes(":"))) {
+			throw new Error("Mount path contains an invalid character");
 		}
 	}
 
@@ -122,6 +132,10 @@ export class ExternalMountManager {
 		if (!sourcePath) {
 			throw new Error("Source path is required");
 		}
+		const pathModule = getPath();
+		if (!pathModule.isAbsolute(sourcePath)) {
+			throw new Error("Source path must be absolute");
+		}
 
 		const mountPath = this.normalizeMountPath(mount.mountPath);
 		this.validateMountPath(mountPath);
@@ -130,20 +144,27 @@ export class ExternalMountManager {
 		if (!sourceStat || !sourceStat.isDirectory()) {
 			throw new Error("Source path must be an existing folder");
 		}
+		const sourceRealPath = await this.getRealPath(sourcePath);
+		const vaultRealPath = await this.getRealPath(this.getVaultBasePath());
+		this.validateSourceBoundary(sourceRealPath, vaultRealPath);
 
-		const targetPath = this.getTargetPath(mountPath);
+		const targetPath = pathModule.join(vaultRealPath, ...mountPath.split("/").filter(Boolean));
+		await this.validateTargetBoundary(targetPath, vaultRealPath);
 		const existing = await this.safeLstat(targetPath);
 		if (existing) {
 			if (existing.isSymbolicLink()) {
-				return;
+				const linkTarget = await this.resolveLinkDestination(targetPath);
+				if (this.pathsEqual(linkTarget, sourceRealPath)) {
+					return;
+				}
+				throw new Error("Mount path points to a different folder");
 			}
 			throw new Error("Mount path already exists");
 		}
 
 		const fsPromises = getFs();
-		const pathModule = getPath();
 		await fsPromises.mkdir(pathModule.dirname(targetPath), { recursive: true });
-		await this.createLink(sourcePath, targetPath, linkType);
+		await this.createLink(sourceRealPath, targetPath, linkType);
 	}
 
 	async removeMount(mount: ExternalMount): Promise<void> {
@@ -154,13 +175,26 @@ export class ExternalMountManager {
 		const mountPath = this.normalizeMountPath(mount.mountPath);
 		this.validateMountPath(mountPath);
 
-		const targetPath = this.getTargetPath(mountPath);
+		const pathModule = getPath();
+		if (!pathModule.isAbsolute(mount.sourcePath.trim())) {
+			throw new Error("Source path must be absolute");
+		}
+		const vaultRealPath = await this.getRealPath(this.getVaultBasePath());
+		const targetPath = pathModule.join(vaultRealPath, ...mountPath.split("/").filter(Boolean));
+		await this.validateTargetBoundary(targetPath, vaultRealPath);
 		const existing = await this.safeLstat(targetPath);
 		if (!existing) {
 			return;
 		}
 		if (!existing.isSymbolicLink()) {
 			throw new Error("Mount path is not a symlink");
+		}
+		const configuredSource = await this.safeStat(mount.sourcePath.trim())
+			? await this.getRealPath(mount.sourcePath.trim())
+			: pathModule.resolve(mount.sourcePath.trim());
+		const linkTarget = await this.resolveLinkDestination(targetPath);
+		if (!this.pathsEqual(linkTarget, configuredSource)) {
+			throw new Error("Mount path points to a different folder");
 		}
 		const fsPromises = getFs();
 		await fsPromises.unlink(targetPath);
@@ -181,8 +215,14 @@ export class ExternalMountManager {
 		}
 
 		const mountPath = this.normalizeMountPath(mount.mountPath);
-		if (!mountPath) {
-			return { state: "conflict", detail: "Invalid mount path" };
+		try {
+			this.validateMountPath(mountPath);
+		} catch (error) {
+			return { state: "unsafe-path", detail: String(error) };
+		}
+		const pathModule = getPath();
+		if (!pathModule.isAbsolute(mount.sourcePath.trim())) {
+			return { state: "unsafe-path", detail: "Source path must be absolute" };
 		}
 
 		const sourceStat = await this.safeStat(mount.sourcePath);
@@ -190,7 +230,22 @@ export class ExternalMountManager {
 			return { state: "source-missing" };
 		}
 
-		const targetPath = this.getTargetPath(mountPath);
+		let sourceRealPath: string;
+		let vaultRealPath: string;
+		try {
+			sourceRealPath = await this.getRealPath(mount.sourcePath);
+			vaultRealPath = await this.getRealPath(this.getVaultBasePath());
+			this.validateSourceBoundary(sourceRealPath, vaultRealPath);
+		} catch (error) {
+			return { state: "unsafe-path", detail: String(error) };
+		}
+
+		const targetPath = pathModule.join(vaultRealPath, ...mountPath.split("/").filter(Boolean));
+		try {
+			await this.validateTargetBoundary(targetPath, vaultRealPath);
+		} catch (error) {
+			return { state: "unsafe-path", detail: String(error) };
+		}
 		const targetStat = await this.safeLstat(targetPath);
 		if (!targetStat) {
 			return { state: "missing-target" };
@@ -198,8 +253,73 @@ export class ExternalMountManager {
 		if (!targetStat.isSymbolicLink()) {
 			return { state: "conflict" };
 		}
+		try {
+			const linkTarget = await this.resolveLinkDestination(targetPath);
+			if (!this.pathsEqual(linkTarget, sourceRealPath)) {
+				return { state: "mismatched-target" };
+			}
+		} catch (error) {
+			return { state: "mismatched-target", detail: String(error) };
+		}
 
 		return { state: "linked" };
+	}
+
+	private async getRealPath(targetPath: string): Promise<string> {
+		return getPath().resolve(await getFs().realpath(targetPath));
+	}
+
+	private validateSourceBoundary(sourcePath: string, vaultPath: string): void {
+		if (this.isSameOrInside(sourcePath, vaultPath) || this.isSameOrInside(vaultPath, sourcePath)) {
+			throw new Error("Source folder must be outside the vault and must not contain it");
+		}
+	}
+
+	private async validateTargetBoundary(targetPath: string, vaultPath: string): Promise<void> {
+		if (!this.isSameOrInside(targetPath, vaultPath) || this.pathsEqual(targetPath, vaultPath)) {
+			throw new Error("Mount path must stay inside the vault");
+		}
+
+		const pathModule = getPath();
+		const relativePath = pathModule.relative(vaultPath, targetPath);
+		const segments = relativePath.split(/[\\/]+/).filter(Boolean);
+		let currentPath = vaultPath;
+		for (const segment of segments.slice(0, -1)) {
+			currentPath = pathModule.join(currentPath, segment);
+			const stat = await this.safeLstat(currentPath);
+			if (!stat) break;
+			if (stat.isSymbolicLink()) {
+				throw new Error("Mount path cannot be nested under another link");
+			}
+			if (!stat.isDirectory()) {
+				throw new Error("Mount parent path is not a folder");
+			}
+		}
+	}
+
+	private isSameOrInside(candidatePath: string, parentPath: string): boolean {
+		const pathModule = getPath();
+		const relativePath = pathModule.relative(parentPath, candidatePath);
+		return relativePath === "" || (!relativePath.startsWith("..") && !pathModule.isAbsolute(relativePath));
+	}
+
+	private pathsEqual(firstPath: string, secondPath: string): boolean {
+		const pathModule = getPath();
+		const first = pathModule.resolve(firstPath);
+		const second = pathModule.resolve(secondPath);
+		return Platform.isWin ? first.toLowerCase() === second.toLowerCase() : first === second;
+	}
+
+	private async resolveLinkDestination(targetPath: string): Promise<string> {
+		const fsPromises = getFs();
+		const pathModule = getPath();
+		try {
+			return await this.getRealPath(targetPath);
+		} catch {
+			const rawTarget = await fsPromises.readlink(targetPath);
+			const normalizedTarget = rawTarget.replace(/^\\\\\?\\/, "");
+			return pathModule.resolve(pathModule.dirname(targetPath), normalizedTarget);
+		}
 	}
 
 	private async safeStat(targetPath: string): Promise<FsStats | null> {

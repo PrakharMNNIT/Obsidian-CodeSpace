@@ -8,9 +8,15 @@ export class CustomDropdown {
 	private options: Map<string, string> = new Map();
 	private onChangeCallback: ((value: string) => void) | null = null;
 	private isOpen: boolean = false;
+	private documentClickHandler: (event: MouseEvent) => void;
 
 	constructor(container: HTMLElement) {
 		this.containerEl = container;
+		this.documentClickHandler = (event) => {
+			if (this.isOpen && !this.containerEl.contains(event.target as Node)) {
+				this.close();
+			}
+		};
 		this.render();
 		this.attachEvents();
 	}
@@ -29,11 +35,7 @@ export class CustomDropdown {
 			this.toggle();
 		});
 
-		this.containerEl.ownerDocument.addEventListener("click", (e) => {
-			if (this.isOpen && !this.containerEl.contains(e.target as Node)) {
-				this.close();
-			}
-		});
+		this.containerEl.ownerDocument.addEventListener("click", this.documentClickHandler);
 	}
 
 	addOption(value: string, label: string) {
@@ -136,6 +138,13 @@ export class CustomDropdown {
 	onChange(callback: (value: string) => void) {
 		this.onChangeCallback = callback;
 	}
+
+	destroy(): void {
+		this.containerEl.ownerDocument.removeEventListener("click", this.documentClickHandler);
+		this.dropdownEl?.remove();
+		this.dropdownEl = null;
+		this.onChangeCallback = null;
+	}
 }
 
 type MultiSelectLabelOptions = {
@@ -153,10 +162,16 @@ export class MultiSelectDropdown {
 	private onChangeCallback: ((values: string[]) => void) | null = null;
 	private isOpen = false;
 	private labels: MultiSelectLabelOptions;
+	private documentClickHandler: (event: MouseEvent) => void;
 
 	constructor(container: HTMLElement, labels: MultiSelectLabelOptions) {
 		this.containerEl = container;
 		this.labels = labels;
+		this.documentClickHandler = (event) => {
+			if (this.isOpen && !this.containerEl.contains(event.target as Node)) {
+				this.close();
+			}
+		};
 		this.render();
 		this.attachEvents();
 		this.updateLabel();
@@ -175,11 +190,7 @@ export class MultiSelectDropdown {
 			this.toggle();
 		});
 
-		this.containerEl.ownerDocument.addEventListener("click", (e) => {
-			if (this.isOpen && !this.containerEl.contains(e.target as Node)) {
-				this.close();
-			}
-		});
+		this.containerEl.ownerDocument.addEventListener("click", this.documentClickHandler);
 	}
 
 	addOption(value: string, label: string) {
@@ -289,5 +300,12 @@ export class MultiSelectDropdown {
 		if (this.onChangeCallback) {
 			this.onChangeCallback(this.getValues());
 		}
+	}
+
+	destroy(): void {
+		this.containerEl.ownerDocument.removeEventListener("click", this.documentClickHandler);
+		this.dropdownEl?.remove();
+		this.dropdownEl = null;
+		this.onChangeCallback = null;
 	}
 }

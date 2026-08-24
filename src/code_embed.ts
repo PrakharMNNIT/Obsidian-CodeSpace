@@ -1,88 +1,16 @@
-import { MarkdownRenderChild, MarkdownRenderer, TFile, EventRef, normalizePath } from "obsidian";
+import { MarkdownRenderChild, MarkdownRenderer, TFile, EventRef, normalizePath, debounce } from "obsidian";
 import { EditorView } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { lineNumbers } from "@codemirror/view";
-import { python } from "@codemirror/lang-python";
-import { cpp } from "@codemirror/lang-cpp";
-import { javascript } from "@codemirror/lang-javascript";
-import { html } from "@codemirror/lang-html";
-import { css } from "@codemirror/lang-css";
-import { sql } from "@codemirror/lang-sql";
-import { php } from "@codemirror/lang-php";
-import { rust } from "@codemirror/lang-rust";
-import { java } from "@codemirror/lang-java";
-import { go } from "@codemirror/lang-go";
-import { yaml } from "@codemirror/lang-yaml";
-import { xml } from "@codemirror/lang-xml";
-import { kotlin } from "@codemirror/legacy-modes/mode/clike";
-import { octave } from "@codemirror/legacy-modes/mode/octave";
 import { tags } from "@lezer/highlight";
-import { syntaxHighlighting, HighlightStyle, StreamLanguage } from "@codemirror/language";
-import { Compartment, Extension } from "@codemirror/state";
+import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
+import { Compartment } from "@codemirror/state";
 import CodeSpacePlugin from "./main";
 import { createFencedCodeBlock } from "./code_embed_markdown";
 import { t } from "./lang/helpers";
+import { EMBED_RENDERABLE_EXTENSIONS, LANGUAGE_PACKAGES } from "./language_registry";
+import { TargetRegistry } from "./target_registry";
 
-// Language packages mapping
-const LANGUAGE_PACKAGES: Record<string, Extension> = {
-	'py': python(),
-	'c': cpp(),
-	'cpp': cpp(),
-	'h': cpp(),
-	'hpp': cpp(),
-	'cc': cpp(),
-	'cxx': cpp(),
-	'js': javascript(),
-	'ts': javascript({ typescript: true }),
-	'jsx': javascript({ jsx: true }),
-	'tsx': javascript({ typescript: true, jsx: true }),
-	'json': javascript({ jsx: true }),
-	'mjs': javascript(),
-	'cjs': javascript(),
-	'json5': javascript({ jsx: true }),
-	'jsonc': javascript({ jsx: true }),
-	'vue': javascript({ jsx: true }),
-	'svelte': javascript({ jsx: true }),
-	'astro': javascript({ jsx: true }),
-	'html': html(),
-	'htm': html(),
-	'xhtml': html(),
-	'css': css(),
-	'scss': css(),
-	'sass': css(),
-	'less': css(),
-	'sql': sql(),
-	'php': php(),
-	'rs': rust(),
-	'java': java(),
-	'cs': java(), // Use Java mode for C# as a close approximation
-	'kt': StreamLanguage.define(kotlin),
-	'kts': StreamLanguage.define(kotlin),
-	'm': StreamLanguage.define(octave),
-	'go': go(),
-	'yaml': yaml(),
-	'yml': yaml(),
-	'xml': xml(),
-	'urdf': xml(),
-	'xacro': xml(),
-	'svg': xml(),
-	'xsd': xml(),
-	'xsl': xml(),
-	'xslt': xml(),
-	'wsdl': xml(),
-	'plist': xml(),
-	'csproj': xml(),
-	'vcxproj': xml(),
-	'props': xml(),
-	'targets': xml(),
-	'config': xml(),
-	'toml': yaml(),
-	'ini': yaml(),
-	'cfg': yaml(),
-	'conf': yaml(),
-};
-
-const EMBED_RENDERABLE_EXTENSIONS = new Set(Object.keys(LANGUAGE_PACKAGES));
 // Syntax highlighting styles
 const lightHighlightStyle = HighlightStyle.define([
 	{ tag: tags.keyword, color: "#af00db" },
@@ -229,6 +157,8 @@ const embedChildren = new WeakMap<HTMLElement, CodeEmbedChild>();
 const embedStaticChildren = new WeakMap<HTMLElement, MarkdownRenderChild>();
 const embedObserversByDoc = new WeakMap<Document, MutationObserver>();
 const embedPrintRefreshByDoc = new WeakMap<Document, () => void>();
+const embedTargets = new TargetRegistry<HTMLElement>();
+const trackedDocuments = new Set<Document>();
 const CODE_SPACE_POPOUT_STYLE_ID = "code-space-popout-styles";
 const CODE_SPACE_SOURCE_PATH_ATTR = "data-code-space-source-path";
 const SOURCE_PATH_ATTR_CANDIDATES = [
@@ -251,8 +181,6 @@ function applyEmbedCssVariables(targetDoc: Document, plugin: CodeSpacePlugin) {
 }
 
 class CodeEmbedSectionObserverChild extends MarkdownRenderChild {
-	private observer: MutationObserver | null = null;
-
 	constructor(
 		containerEl: HTMLElement,
 		private plugin: CodeSpacePlugin,
@@ -282,36 +210,15 @@ class CodeEmbedSectionObserverChild extends MarkdownRenderChild {
 
 		processEmbeds();
 
-		this.observer = new MutationObserver((mutations) => {
-			let shouldRescan = false;
-
-			for (const mutation of mutations) {
-				for (const node of Array.from(mutation.addedNodes)) {
-					if (node.nodeType !== 1) continue;
-					const elem = node as Element;
-					if (elem.classList.contains("file-embed") || elem.querySelector(".file-embed")) {
-						shouldRescan = true;
-						break;
-					}
-				}
-
-				if (shouldRescan) break;
-			}
-
-			if (shouldRescan) {
-				processEmbeds();
-			}
-		});
-
-		this.observer.observe(this.containerEl, { childList: true, subtree: true });
 	}
+}
 
-	onunload(): void {
-		if (this.observer) {
-			this.observer.disconnect();
-			this.observer = null;
-		}
-	}
+function trackEmbedTarget(embedEl: HTMLElement, targetPath: string): void {
+	embedTargets.track(embedEl, targetPath);
+}
+
+function untrackEmbedTarget(embedEl: HTMLElement): void {
+	embedTargets.untrack(embedEl);
 }
 
 function rememberSourcePath(targetEl: HTMLElement, sourcePath: string) {
@@ -346,6 +253,7 @@ function resolveSourcePathFromAncestors(embedEl: HTMLElement, plugin: CodeSpaceP
 }
 
 function disposeCodeEmbed(embedEl: HTMLElement) {
+	untrackEmbedTarget(embedEl);
 	const ownerWindow = embedEl.ownerDocument.defaultView ?? window;
 	const pendingTimer = pendingEmbedTimers.get(embedEl);
 	if (pendingTimer) {
@@ -407,6 +315,7 @@ export function queueCodeEmbedsInElement(rootEl: HTMLElement, plugin: CodeSpaceP
 
 function installPrintRefreshForDocument(doc: Document, docWindow: Window, plugin: CodeSpacePlugin) {
 	if (embedPrintRefreshByDoc.has(doc)) return;
+	trackedDocuments.add(doc);
 
 	const refresh = () => {
 		ensureCodeSpaceStylesInDocument(doc, plugin);
@@ -578,6 +487,7 @@ function installEmbedObserverForDocument(doc: Document, docWindow: Window, plugi
 
 	observer.observe(doc.body, { childList: true, subtree: true });
 	embedObserversByDoc.set(doc, observer);
+	trackedDocuments.add(doc);
 
 	// Also process any existing embeds already present in this window.
 	queueAllCodeEmbedsInDocument(doc, docWindow, plugin);
@@ -646,62 +556,25 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 	// Listen for file changes so we can update embeds when their source files change on disk.
 	plugin.registerEvent(
 		plugin.app.vault.on("modify", (changedFile) => {
-			// 遍历所有文档，查找嵌入了变更文件的嵌入块
-			plugin.app.workspace.iterateAllLeaves((leaf) => {
-				const view = leaf.view as unknown as {
-					containerEl?: HTMLElement
-					contentEl?: HTMLElement
-					file?: TFile
-				} | null
-				if (!view) return
-
-				const possibleContainers = [
-					view.contentEl,
-					view.containerEl,
-					view.containerEl?.querySelector(".markdown-preview-view"),
-					view.containerEl?.querySelector(".markdown-source-view"),
-				]
-
-				for (const container of possibleContainers) {
-					if (!container) continue
-
-					const embeds = (container as HTMLElement).querySelectorAll(".file-embed")
-
-					for (const embedEl of Array.from(embeds)) {
-						const embed = embedEl as HTMLElement
-
-						// 检查这个嵌入块是否引用了变更的文件
-						const titleEl = embed.querySelector(".file-embed-title")
-						const internalLink = titleEl?.querySelector<HTMLAnchorElement>("a.internal-link")
-						const linkPath =
-							internalLink?.getAttribute("data-href") ||
-							titleEl?.getAttribute("data-href") ||
-							embed.getAttribute("data-href") ||
-							embed.getAttribute("data-src") ||
-							embed.getAttribute("src")
-
-						if (!linkPath) continue
-
-						// 解析链接路径
-						const sourcePath = resolveSourcePathForEmbed(embed, plugin) || view.file?.path || ""
-						const destFile = plugin.app.metadataCache.getFirstLinkpathDest(linkPath, sourcePath)
-
-						// 如果嵌入的目标文件就是变更的文件，重新渲染
-						if (destFile?.path === changedFile.path) {
-							disposeCodeEmbed(embed)
-							rememberSourcePath(embed, sourcePath)
-							scheduleProcessCodeEmbed(embed, plugin, sourcePath)
-						}
-					}
+			const trackedEmbeds = embedTargets.get(changedFile.path);
+			for (const embed of trackedEmbeds) {
+				if (!embed.isConnected) {
+					disposeCodeEmbed(embed);
+					continue;
 				}
-			})
+				const sourcePath = resolveSourcePathForEmbed(embed, plugin);
+				disposeCodeEmbed(embed);
+				if (sourcePath) {
+					rememberSourcePath(embed, sourcePath);
+					scheduleProcessCodeEmbed(embed, plugin, sourcePath);
+				}
+			}
 		}),
 	);
 
 	// Re-process embeds when layout changes (includes switching between edit/reading modes).
 	// Reading mode uses a different rendering engine and may not trigger post processors reliably.
-	plugin.registerEvent(
-		plugin.app.workspace.on("layout-change", () => {
+	const refreshAfterLayoutChange = debounce(() => {
 			// Scan all leaves for unprocessed embeds so Canvas, Excalidraw-like hosts,
 			// and popouts can reuse the same renderer.
 			plugin.app.workspace.iterateAllLeaves((leaf) => {
@@ -737,8 +610,9 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 					}
 				}
 			});
-		})
-	);
+	}, 100, true);
+	plugin.registerEvent(plugin.app.workspace.on("layout-change", () => refreshAfterLayoutChange()));
+	plugin.register(() => refreshAfterLayoutChange.cancel());
 
 	// Popout windows: markdown post processors are not guaranteed to be installed in new windows
 	// depending on how Obsidian spins up workspace windows. Use a per-window observer to ensure embeds render.
@@ -771,8 +645,35 @@ export function registerCodeEmbedProcessor(plugin: CodeSpacePlugin) {
 				observer.disconnect();
 				embedObserversByDoc.delete(doc);
 			}
+			trackedDocuments.delete(doc);
 		})
 	);
+
+	plugin.register(() => {
+		for (const doc of Array.from(trackedDocuments)) {
+			doc.querySelectorAll(".file-embed").forEach((embed) => disposeCodeEmbed(embed as HTMLElement));
+			embedObserversByDoc.get(doc)?.disconnect();
+			embedObserversByDoc.delete(doc);
+			const cleanupPrintRefresh = embedPrintRefreshByDoc.get(doc);
+			cleanupPrintRefresh?.();
+			embedPrintRefreshByDoc.delete(doc);
+		}
+		trackedDocuments.clear();
+		embedTargets.clear();
+	});
+}
+
+export function refreshAllCodeEmbeds(plugin: CodeSpacePlugin): void {
+	for (const doc of trackedDocuments) {
+		doc.querySelectorAll(".file-embed").forEach((element) => {
+			const embedEl = element as HTMLElement;
+			const sourcePath = resolveSourcePathForEmbed(embedEl, plugin);
+			if (!sourcePath) return;
+			disposeCodeEmbed(embedEl);
+			rememberSourcePath(embedEl, sourcePath);
+			scheduleProcessCodeEmbed(embedEl, plugin, sourcePath);
+		});
+	}
 }
 
 async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, sourcePath: string, renderToken: number) {
@@ -954,6 +855,7 @@ async function processCodeEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin, s
 
 	const rangeAttr = startLine > 0 ? (endLine > 0 ? `#L${startLine}-L${endLine}` : `#L${startLine}`) : "";
 	const renderKey = tFile.path + rangeAttr;
+	trackEmbedTarget(embedEl, tFile.path);
 	if (lastRenderedFor && lastRenderedFor === renderKey) {
 		// Already rendered for this exact file and line range (common during fast re-renders).
 		return;

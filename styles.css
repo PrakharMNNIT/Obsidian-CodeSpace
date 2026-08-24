@@ -496,10 +496,31 @@ body .code-space-container .cm-activeLine::selection {
 }
 
 /* File Grid */
+.code-file-list-container {
+    position: relative;
+    width: 100%;
+    min-height: 1px;
+}
+
 .code-file-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 14px;
+}
+
+.code-file-list-window {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    transform: translateY(var(--code-space-virtual-offset, 0));
+    grid-template-columns: repeat(var(--code-space-virtual-columns, 1), minmax(0, 1fr));
+}
+
+.code-file-list-window.is-empty {
+    position: relative;
+    display: block;
+    transform: none;
 }
 
 .code-file-item {
@@ -513,6 +534,9 @@ body .code-space-container .cm-activeLine::selection {
     cursor: pointer;
     transition: background-color 0.1s ease, border-color 0.1s ease;
     position: relative;
+    box-sizing: border-box;
+    height: 88px;
+    overflow: hidden;
 }
 
 .code-file-item:hover {

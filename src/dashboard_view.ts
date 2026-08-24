@@ -1,9 +1,11 @@
-import { ItemView, WorkspaceLeaf, TFile, setIcon, moment, Menu, TextComponent, ButtonComponent, Modal, Notice, SuggestModal, App, debounce } from "obsidian";
+import { ItemView, WorkspaceLeaf, TAbstractFile, TFile, TFolder, setIcon, moment, Menu, TextComponent, ButtonComponent, Modal, Notice, SuggestModal, App, debounce } from "obsidian";
 import CodeSpacePlugin from "./main"; // 导入插件类型
 import { CustomDropdown, MultiSelectDropdown } from "./dropdown";
 import { FolderFilterModal } from "./folder_filter_modal";
 import { t } from "./lang/helpers";
 import { DashboardState } from "./settings";
+import { DashboardFileIndex, DashboardFileRecord } from "./dashboard_file_index";
+import { DashboardVirtualGrid } from "./dashboard_virtual_grid";
 
 // 创建一个简单的输入对话框
 class RenameModal extends Modal {
@@ -89,17 +91,23 @@ export class CodeDashboardView extends ItemView {
 	state: DashboardState;
 	private activeDropdowns: Array<CustomDropdown | MultiSelectDropdown> = [];
 	private refreshPending = false;
-	private fileListContainer: HTMLElement | null = null;
-	private managedFiles: TFile[] = [];
 	private fileItems = new Map<string, HTMLElement>();
-	private scheduleRender = debounce(() => {
+	private fileIndex: DashboardFileIndex | null = null;
+	private visibleRecords: DashboardFileRecord[] = [];
+	private virtualGrid: DashboardVirtualGrid<DashboardFileRecord> | null = null;
+	private subtitleEl: HTMLElement | null = null;
+	private folderFilterButton: ButtonComponent | null = null;
+	private extensionFilterDropdown: MultiSelectDropdown | null = null;
+	private applySearch = debounce(() => this.applyCurrentView(true), 100, true);
+	private scheduleStructureRefresh = debounce(() => {
 		if (!this.containerEl.isShown()) {
 			this.refreshPending = true;
 			return;
 		}
-		this.refreshPending = false;
-		this.render(true);
-	}, 250, true);
+		this.updateAvailableFilters();
+		this.updateSubtitle();
+		this.applyCurrentView(false);
+	}, 100, true);
 
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
@@ -141,27 +149,33 @@ export class CodeDashboardView extends ItemView {
 		}
 
 		this.render();
-		this.registerEvent(this.app.vault.on("create", () => this.scheduleRender()));
-		this.registerEvent(this.app.vault.on("delete", () => this.scheduleRender()));
-		this.registerEvent(this.app.vault.on("rename", () => this.scheduleRender()));
+		this.registerEvent(this.app.vault.on("create", (file) => {
+			if (file instanceof TFile) this.handleFileCreated(file);
+		}));
+		this.registerEvent(this.app.vault.on("delete", (file) => this.handleFileDeleted(file)));
+		this.registerEvent(this.app.vault.on("rename", (file, oldPath) => this.handleFileRenamed(file, oldPath)));
 		this.registerEvent(this.app.vault.on("modify", (file) => {
-			if (file instanceof TFile && this.isManagedFile(file)) {
-				this.handleManagedFileModify(file);
-			}
+			if (file instanceof TFile) this.handleManagedFileModify(file);
 		}));
 		this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
 			if (this.refreshPending && this.containerEl.isShown()) {
-				this.scheduleRender.run();
+				this.refreshPending = false;
+				this.updateAvailableFilters();
+				this.updateSubtitle();
+				this.applyCurrentView(false);
 			}
 		}));
 	}
 
 	async onClose(): Promise<void> {
-		this.scheduleRender.cancel();
+		this.applySearch.cancel();
+		this.scheduleStructureRefresh.cancel();
 		this.saveState.cancel();
+		this.virtualGrid?.destroy();
+		this.virtualGrid = null;
 		this.destroyDropdowns();
-		this.fileListContainer = null;
-		this.managedFiles = [];
+		this.fileIndex = null;
+		this.visibleRecords = [];
 		this.fileItems.clear();
 	}
 
@@ -183,10 +197,6 @@ export class CodeDashboardView extends ItemView {
 		return ['py', 'js', 'c', 'cpp'];
 	}
 
-	private isManagedFile(file: TFile): boolean {
-		return this.getManagedExtensions().includes(file.extension.toLowerCase()) && !this.plugin?.isIgnoredFile(file);
-	}
-
 	private destroyDropdowns(): void {
 		for (const dropdown of this.activeDropdowns) {
 			dropdown.destroy();
@@ -195,30 +205,101 @@ export class CodeDashboardView extends ItemView {
 	}
 
 	private handleManagedFileModify(file: TFile): void {
+		const record = this.fileIndex?.upsert(file);
+		if (!record) return;
 		if (!this.containerEl.isShown()) {
 			this.refreshPending = true;
 			return;
 		}
 
-		if (!this.fileListContainer || !this.managedFiles.some((managedFile) => managedFile.path === file.path)) {
-			this.scheduleRender();
-			return;
-		}
-
-		if (this.state.sortBy === "date") {
-			this.refreshFileList(this.fileListContainer, this.managedFiles);
+		if (this.state.sortBy === "date" && this.visibleRecords.some((candidate) => candidate.path === record.path)) {
+			this.visibleRecords = this.fileIndex?.reposition(this.visibleRecords, record, this.state) ?? this.visibleRecords;
+			this.virtualGrid?.setItems(this.visibleRecords, false);
 			return;
 		}
 
 		const timeEl = this.fileItems.get(file.path)?.querySelector<HTMLElement>(".code-file-time");
-		timeEl?.setText(moment(file.stat.mtime).fromNow());
+		timeEl?.setText(moment(record.mtime).fromNow());
+	}
+
+	private handleFileCreated(file: TFile): void {
+		this.fileIndex?.upsert(file);
+		this.handleIndexStructureChanged();
+	}
+
+	private handleFileDeleted(file: TAbstractFile): void {
+		if (file instanceof TFile) {
+			this.fileIndex?.remove(file.path);
+		} else if (file instanceof TFolder) {
+			this.fileIndex?.removePrefix(file.path);
+		}
+		this.handleIndexStructureChanged();
+	}
+
+	private handleFileRenamed(file: TAbstractFile, oldPath: string): void {
+		if (file instanceof TFile) {
+			this.fileIndex?.remove(oldPath);
+			this.fileIndex?.upsert(file);
+		} else if (file instanceof TFolder) {
+			this.rebuildFileIndex();
+		}
+		this.handleIndexStructureChanged();
+	}
+
+	private handleIndexStructureChanged(): void {
+		this.scheduleStructureRefresh();
+	}
+
+	private rebuildFileIndex(): void {
+		const index = new DashboardFileIndex({
+			extensions: this.getManagedExtensions(),
+			ignoredPaths: this.plugin?.getIgnoredFiles() ?? [],
+			externalMountPaths: (this.plugin?.settings.externalMounts ?? []).map((mount) => mount.mountPath),
+		});
+		index.rebuild(this.app.vault.getFiles());
+		this.fileIndex = index;
+	}
+
+	private updateSubtitle(): void {
+		this.subtitleEl?.setText(`${this.fileIndex?.size ?? 0} ${t('SUBTITLE_MANAGED_FILES')}`);
+	}
+
+	private updateAvailableFilters(): void {
+		const folders = this.fileIndex?.getFolders() ?? [];
+		const folderSet = new Set(folders);
+		this.state.filterFolder = this.state.filterFolder.filter((folder) => folderSet.has(folder));
+		this.folderFilterButton?.setButtonText(this.getFolderFilterLabel());
+
+		const extensions = this.fileIndex?.getExtensions() ?? [];
+		const extensionSet = new Set(extensions);
+		this.state.filterExt = this.state.filterExt.filter((extension) => extensionSet.has(extension));
+		this.extensionFilterDropdown?.setOptions(extensions.map((extension) => [extension, extension.toUpperCase()]));
+		this.extensionFilterDropdown?.setValues(this.state.filterExt);
+	}
+
+	private getFolderFilterLabel(): string {
+		const selectedCount = this.state.filterFolder.length;
+		return selectedCount === 0
+			? t('TOOLBAR_FILTER_FOLDER_ALL')
+			: `${t('TOOLBAR_FILTER_FOLDER_LABEL')} (${selectedCount})`;
+	}
+
+	private applyCurrentView(resetScroll: boolean): void {
+		if (!this.fileIndex || !this.virtualGrid) return;
+		this.visibleRecords = this.fileIndex.derive(this.state);
+		this.virtualGrid.setItems(this.visibleRecords, resetScroll);
 	}
 
 	render(_keepState = false) {
+		this.applySearch.cancel();
+		this.scheduleStructureRefresh.cancel();
+		this.virtualGrid?.destroy();
+		this.virtualGrid = null;
 		this.destroyDropdowns();
 		const container = this.containerEl.children[1];
 		if (!container) return;
 		container.empty();
+		this.rebuildFileIndex();
 
 		const root = container.createDiv({ cls: "code-dashboard-root" });
 
@@ -267,14 +348,10 @@ export class CodeDashboardView extends ItemView {
 				}
 			});
 
-		const codeExtensions = this.getManagedExtensions();
-		let files = this.app.vault.getFiles().filter((file) =>
-			codeExtensions.includes(file.extension.toLowerCase()) &&
-			!this.plugin?.isIgnoredFile(file)
-		);
-		this.managedFiles = files;
-
-		headerContainer.createEl("p", { text: `${files.length} ${t('SUBTITLE_MANAGED_FILES')}`, cls: "code-dashboard-subtitle" });
+		this.subtitleEl = headerContainer.createEl("p", {
+			text: `${this.fileIndex?.size ?? 0} ${t('SUBTITLE_MANAGED_FILES')}`,
+			cls: "code-dashboard-subtitle"
+		});
 
 		// Toolbar
 		const toolbar = root.createDiv({ cls: "code-dashboard-toolbar" });
@@ -290,7 +367,7 @@ export class CodeDashboardView extends ItemView {
 			.onChange((value) => {
 				this.state.searchQuery = value;
 				this.saveState();
-				this.refreshFileList(fileListContainer, files);
+				this.applySearch();
 			});
 
 		const normalizeFilterValues = (value: unknown): string[] => {
@@ -309,51 +386,44 @@ export class CodeDashboardView extends ItemView {
 		this.state.filterFolder = normalizeFilterValues(this.state.filterFolder);
 		this.state.filterExt = normalizeFilterValues(this.state.filterExt);
 
-		const folderFilterLabel = () => {
-			const selectedCount = this.state.filterFolder.length;
-			if (selectedCount === 0) return t('TOOLBAR_FILTER_FOLDER_ALL');
-			return `${t('TOOLBAR_FILTER_FOLDER_LABEL')} (${selectedCount})`;
-		};
-
 		// 3. Folder Filter
-		const folderPaths = [...new Set(files.map(f => f.parent?.path ?? "/"))]
-			.sort((a, b) => a.localeCompare(b));
 		const folderFilterContainer = toolbar.createDiv({ cls: "custom-dropdown-wrapper" });
-		const folderFilterButton = new ButtonComponent(folderFilterContainer)
-			.setButtonText(folderFilterLabel())
+		this.folderFilterButton = new ButtonComponent(folderFilterContainer)
+			.setButtonText(this.getFolderFilterLabel())
 			.setTooltip(t('TOOLBAR_FILTER_FOLDER_BUTTON'))
 			.setClass("code-folder-filter-button")
 			.onClick(() => {
+				const folderPaths = this.fileIndex?.getFolders() ?? [];
 				new FolderFilterModal(this.app, folderPaths, this.state.filterFolder, (values) => {
 					const availableFolderSet = new Set(folderPaths);
 					this.state.filterFolder = values.filter((value) => availableFolderSet.has(value));
 					this.saveState();
-					folderFilterButton.setButtonText(folderFilterLabel());
-					this.refreshFileList(fileListContainer, files);
+					this.folderFilterButton?.setButtonText(this.getFolderFilterLabel());
+					this.applyCurrentView(true);
 				}).open();
 			});
-		const availableFolderSet = new Set(folderPaths);
+		const availableFolderSet = new Set(this.fileIndex?.getFolders() ?? []);
 		this.state.filterFolder = this.state.filterFolder.filter((value) => availableFolderSet.has(value));
-		folderFilterButton.setButtonText(folderFilterLabel());
+		this.folderFilterButton.setButtonText(this.getFolderFilterLabel());
 
 		// 4. Filter
-		const existingExts = [...new Set(files.map(f => f.extension))].sort();
+		const existingExts = this.fileIndex?.getExtensions() ?? [];
 		const filterContainer = toolbar.createDiv({ cls: "custom-dropdown-wrapper" });
-		const filterDropdown = new MultiSelectDropdown(filterContainer, {
+		this.extensionFilterDropdown = new MultiSelectDropdown(filterContainer, {
 			emptyLabel: t('TOOLBAR_FILTER_ALL'),
 			countLabel: (count) => `${t('TOOLBAR_FILTER_EXTENSION_LABEL')} (${count})`,
 			clearLabel: t('TOOLBAR_FILTER_CLEAR')
 		});
-		this.activeDropdowns.push(filterDropdown);
-		existingExts.forEach(ext => filterDropdown.addOption(ext, ext.toUpperCase()));
+		this.activeDropdowns.push(this.extensionFilterDropdown);
+		this.extensionFilterDropdown.setOptions(existingExts.map((extension) => [extension, extension.toUpperCase()]));
 		const availableExtSet = new Set(existingExts);
 		const normalizedExts = this.state.filterExt.filter((value) => availableExtSet.has(value));
 		this.state.filterExt = normalizedExts;
-		filterDropdown.setValues(normalizedExts);
-		filterDropdown.onChange((values: string[]) => {
+		this.extensionFilterDropdown.setValues(normalizedExts);
+		this.extensionFilterDropdown.onChange((values: string[]) => {
 			this.state.filterExt = values;
 			this.saveState();
-			this.refreshFileList(fileListContainer, files);
+			this.applyCurrentView(true);
 		});
 
 		// 5. Sort
@@ -367,7 +437,7 @@ export class CodeDashboardView extends ItemView {
 		sortDropdown.onChange((value: string) => {
 			this.state.sortBy = value as 'date' | 'name' | 'type';
 			this.saveState();
-			this.refreshFileList(fileListContainer, files);
+			this.applyCurrentView(true);
 		});
 
 		// 6. Sort Order
@@ -378,102 +448,61 @@ export class CodeDashboardView extends ItemView {
 				this.state.sortDesc = !this.state.sortDesc;
 				this.saveState();
 				sortBtn.setIcon(this.state.sortDesc ? "arrow-down-narrow-wide" : "arrow-up-narrow-wide");
-				this.refreshFileList(fileListContainer, files);
+				this.applyCurrentView(true);
 			});
 
 		// List Container
 		const fileListContainer = root.createDiv({ cls: "code-file-list-container" });
-		this.fileListContainer = fileListContainer;
-		this.refreshFileList(fileListContainer, files);
+		this.virtualGrid = new DashboardVirtualGrid({
+			scrollEl: root,
+			containerEl: fileListContainer,
+			onBeforeRender: () => this.fileItems.clear(),
+			renderItem: (parent, record) => this.renderFileItem(parent, record),
+			renderEmpty: (parent) => this.renderEmptyState(parent),
+		});
+		this.applyCurrentView(false);
 	}
 
-	refreshFileList(container: HTMLElement, allFiles: TFile[]) {
-		container.empty();
-		this.fileItems.clear();
-		const grid = container.createDiv({ cls: "code-file-list" });
-		const externalMounts = this.plugin?.settings?.externalMounts ?? [];
-		const externalMountPaths = externalMounts
-			.map((mount) => mount.mountPath.replace(/^\/+/, "").replace(/\/+$/, ""))
-			.filter((mountPath) => mountPath.length > 0);
-		const isExternalFile = (file: TFile): boolean => {
-			if (externalMountPaths.length === 0) return false;
-			return externalMountPaths.some((mountPath) =>
-				file.path === mountPath || file.path.startsWith(`${mountPath}/`)
-			);
-		};
+	private renderEmptyState(parent: HTMLElement): void {
+		const empty = parent.createDiv({ cls: "code-empty-state" });
+		setIcon(empty.createDiv({ cls: "code-empty-icon" }), "search-x");
+		empty.createDiv({ text: t('EMPTY_STATE_NO_FILES') });
+	}
 
-		// Filter
-		let files = allFiles.filter(f => {
-			if (this.plugin?.isIgnoredFile(f)) {
-				return false;
-			}
-
-			const q = this.state.searchQuery.toLowerCase();
-			const matchQuery = f.name.toLowerCase().includes(q) || f.path.toLowerCase().includes(q);
-			const folderPath = f.parent?.path ?? "/";
-			const folderFilters = Array.isArray(this.state.filterFolder) ? this.state.filterFolder : [];
-			const extFilters = Array.isArray(this.state.filterExt) ? this.state.filterExt : [];
-			const matchFolder = folderFilters.length === 0 || folderFilters.includes(folderPath);
-			const matchExt = extFilters.length === 0 || extFilters.includes(f.extension);
-			return matchQuery && matchFolder && matchExt;
-		});
-
-		// Sort
-		files.sort((a, b) => {
-			let res = 0;
-			switch (this.state.sortBy) {
-				case 'name': res = a.name.localeCompare(b.name); break;
-				case 'type': res = a.extension.localeCompare(b.extension); break;
-				case 'date': res = a.stat.mtime - b.stat.mtime; break;
-			}
-			return this.state.sortDesc ? -res : res;
-		});
-
-		if (files.length === 0) {
-			const empty = grid.createDiv({ cls: "code-empty-state" });
-			setIcon(empty.createDiv({ cls: "code-empty-icon" }), "search-x");
-			empty.createDiv({ text: t('EMPTY_STATE_NO_FILES') });
-			return;
+	private renderFileItem(parent: HTMLElement, record: DashboardFileRecord): void {
+		const file = record.file;
+		const item = parent.createDiv({ cls: "code-file-item" });
+		this.fileItems.set(record.path, item);
+		if (record.isExternal) {
+			item.addClass("code-file-item-external");
 		}
 
-		files.forEach(file => {
-			const item = grid.createDiv({ cls: "code-file-item" });
-			this.fileItems.set(file.path, item);
-			const isExternal = isExternalFile(file);
-			if (isExternal) {
-				item.addClass("code-file-item-external");
-			}
-			
-			// Icon
-			const iconBox = item.createDiv({ cls: "code-file-icon-box" });
-			setIcon(iconBox, "file-code");
-			
-			// Info
-			const info = item.createDiv({ cls: "code-file-info" });
-			const nameEl = info.createDiv({ cls: "code-file-name", text: file.name });
-			nameEl.setAttr("title", file.name);
-			const pathText = file.parent?.path === "/" ? "" : file.parent?.path ?? "";
-			const pathEl = info.createDiv({ cls: "code-file-path", text: pathText });
-			if (pathText) {
-				pathEl.setAttr("title", pathText);
-			}
+		const iconBox = item.createDiv({ cls: "code-file-icon-box" });
+		setIcon(iconBox, "file-code");
 
-			// Meta
-			const meta = item.createDiv({ cls: "code-file-meta" });
-			const tagRow = meta.createDiv({ cls: "code-file-tag-row" });
-			tagRow.createDiv({ cls: "code-file-tag", text: file.extension.toUpperCase() });
-			if (isExternal) {
-				const externalBadge = tagRow.createDiv({ cls: "code-file-external-badge" });
-				externalBadge.setAttr("title", t("TAG_EXTERNAL_MOUNT"));
-				setIcon(externalBadge, "link");
-			}
-			meta.createDiv({ cls: "code-file-time", text: moment(file.stat.mtime).fromNow() });
+		const info = item.createDiv({ cls: "code-file-info" });
+		const nameEl = info.createDiv({ cls: "code-file-name", text: record.name });
+		nameEl.setAttr("title", record.name);
+		const pathText = record.folderPath === "/" ? "" : record.folderPath;
+		const pathEl = info.createDiv({ cls: "code-file-path", text: pathText });
+		if (pathText) {
+			pathEl.setAttr("title", pathText);
+		}
 
-			item.addEventListener("click", () => {
-				void this.openFile(file);
-			});
-			item.addEventListener("contextmenu", (e) => this.showContextMenu(e, file));
+		const meta = item.createDiv({ cls: "code-file-meta" });
+		const tagRow = meta.createDiv({ cls: "code-file-tag-row" });
+		tagRow.createDiv({ cls: "code-file-tag", text: record.extension.toUpperCase() });
+		if (record.isExternal) {
+			const externalBadge = tagRow.createDiv({ cls: "code-file-external-badge" });
+			externalBadge.setAttr("title", t("TAG_EXTERNAL_MOUNT"));
+			setIcon(externalBadge, "link");
+		}
+		meta.createDiv({ cls: "code-file-time", text: moment(record.mtime).fromNow() });
+
+		item.addEventListener("click", () => {
+			void this.openFile(file);
 		});
+		item.addEventListener("contextmenu", (event) => this.showContextMenu(event, file));
 	}
 
 	showContextMenu(event: MouseEvent, file: TFile) {

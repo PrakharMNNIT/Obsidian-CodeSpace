@@ -201,6 +201,15 @@ export class MultiSelectDropdown {
 		this.updateLabel();
 	}
 
+	setOptions(options: Iterable<[string, string]>): void {
+		this.options = new Map(options);
+		this.selectedValues = new Set(Array.from(this.selectedValues).filter((value) => this.options.has(value)));
+		this.updateLabel();
+		if (this.dropdownEl) {
+			this.renderDropdown();
+		}
+	}
+
 	setValues(values: string[]) {
 		this.selectedValues = new Set(values);
 		this.updateLabel();

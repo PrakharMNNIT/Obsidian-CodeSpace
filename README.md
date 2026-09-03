@@ -296,6 +296,10 @@ npm run dev:copy     # Copy built artifacts to the local Vault
 
 `npm run dev:copy` uses `C:\Nonlinear\ob` and `.obsidian` by default. Set `OBSIDIAN_VAULT_PATH` or `OBSIDIAN_CONFIG_DIR` when your Vault uses different paths.
 
+### Release workflow
+
+Update the version in `package.json`, run the validation pipeline, and push a SemVer tag such as `2.4.0`. GitHub Actions then validates the tag, builds the release artifacts, creates provenance attestations, and publishes `main.js`, `manifest.json`, and `styles.css` to the GitHub release.
+
 ### Project structure
 
 ```
@@ -308,6 +312,7 @@ obsidian-codespace/
 │   ├── code_parser.ts         # Syntax parser: multi-language structure analysis
 │   ├── code_embed.ts          # Embed processing: reference and preview logic
 │   ├── code_embed_markdown.ts # Code embed expansion for native PDF export and related flows
+│   ├── scrollbar_visibility.ts # Scrollbar visibility state for editors and embeds
 │   ├── native_pdf_export_patch.ts # Native Export to PDF integration and export-chain patch
 │   ├── dropdown.ts            # UI components: dropdown/multi-select
 │   ├── folder_filter_modal.ts # Folder filter modal

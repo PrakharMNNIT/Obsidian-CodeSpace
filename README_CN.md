@@ -295,6 +295,10 @@ npm run dev:copy     # 将构建产物复制到本地 Vault
 
 `npm run dev:copy` 默认使用 `C:\Nonlinear\ob` 和 `.obsidian`。如 Vault 路径或配置目录不同，请设置 `OBSIDIAN_VAULT_PATH` 或 `OBSIDIAN_CONFIG_DIR`。
 
+### 发布工作流
+
+更新 `package.json` 中的版本，运行验证流水线，并推送类似 `2.4.0` 的 SemVer 标签。GitHub Actions 会校验标签、构建发布资产、生成 provenance attestation，并将 `main.js`、`manifest.json` 和 `styles.css` 发布到 GitHub Release。
+
 ### 项目结构
 
 ```
@@ -307,6 +311,7 @@ obsidian-codespace/
 │   ├── code_parser.ts         # 语法解析：多语言结构分析
 │   ├── code_embed.ts          # 嵌入处理：引用与预览逻辑
 │   ├── code_embed_markdown.ts # 代码引用展开：供原生 PDF 导出等场景复用
+│   ├── scrollbar_visibility.ts # 编辑器与嵌入的滚动条显示状态
 │   ├── native_pdf_export_patch.ts # 原生 Export to PDF 接管与导出链 patch
 │   ├── dropdown.ts            # UI 组件：下拉/多选
 │   ├── folder_filter_modal.ts # 文件夹筛选弹窗

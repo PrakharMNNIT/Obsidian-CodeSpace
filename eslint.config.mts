@@ -27,12 +27,14 @@ export default defineConfig(
 		languageOptions: {
 			globals: globals.node,
 		},
-		rules: {
-			"obsidianmd/no-nodejs-modules": "off",
-			"obsidianmd/no-global-this": "off",
-			"no-undef": "off",
+			rules: {
+				"obsidianmd/no-nodejs-modules": "off",
+				"obsidianmd/no-global-this": "off",
+				// Test fixtures intentionally use structural TFile mocks.
+				"obsidianmd/no-tfile-tfolder-cast": "off",
+				"no-undef": "off",
+			},
 		},
-	},
 	globalIgnores([
 		"node_modules",
 		"dist",

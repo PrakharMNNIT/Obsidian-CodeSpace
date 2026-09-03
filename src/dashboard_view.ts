@@ -7,6 +7,13 @@ import { DashboardState } from "./settings";
 import { DashboardFileIndex, DashboardFileRecord } from "./dashboard_file_index";
 import { DashboardVirtualGrid } from "./dashboard_virtual_grid";
 
+type MomentFactory = (value: number) => { fromNow(): string };
+
+function formatRelativeTime(timestamp: number): string {
+	const createMoment = moment as unknown as MomentFactory;
+	return createMoment(timestamp).fromNow();
+}
+
 // 创建一个简单的输入对话框
 class RenameModal extends Modal {
 	private result: string | null = null;
@@ -219,7 +226,7 @@ export class CodeDashboardView extends ItemView {
 		}
 
 		const timeEl = this.fileItems.get(file.path)?.querySelector<HTMLElement>(".code-file-time");
-		timeEl?.setText(moment(record.mtime).fromNow());
+		timeEl?.setText(formatRelativeTime(record.mtime));
 	}
 
 	private handleFileCreated(file: TFile): void {
@@ -497,7 +504,7 @@ export class CodeDashboardView extends ItemView {
 			externalBadge.setAttr("title", t("TAG_EXTERNAL_MOUNT"));
 			setIcon(externalBadge, "link");
 		}
-		meta.createDiv({ cls: "code-file-time", text: moment(record.mtime).fromNow() });
+		meta.createDiv({ cls: "code-file-time", text: formatRelativeTime(record.mtime) });
 
 		item.addEventListener("click", () => {
 			void this.openFile(file);

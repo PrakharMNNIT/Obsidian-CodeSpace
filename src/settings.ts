@@ -1,4 +1,5 @@
 import { App, PluginSettingTab, Setting, Plugin, FuzzySuggestModal, TFolder, Notice, Platform, TextComponent, ButtonComponent, Modal, debounce } from "obsidian";
+import type { SettingDefinitionItem } from "obsidian";
 import CodeSpacePlugin from "./main";
 import { t } from "./lang/helpers";
 import { ExternalMount, ExternalMountLinkType, ExternalMountManager, pickExternalFolder, suggestMountPath } from "./external_mount";
@@ -231,6 +232,20 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 		this.plugin = plugin as CodeSpacePlugin;
 	}
 
+	// Returning an empty definition list keeps the imperative display() fallback
+	// for Obsidian versions below 1.13 while satisfying the declarative settings
+	// API contract introduced in 1.13.
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		return [];
+	}
+
+	private refreshSettingsView(): void {
+		const legacyDisplay = Reflect.get(this, "display");
+		if (typeof legacyDisplay === "function") {
+			Reflect.apply(legacyDisplay, this, []);
+		}
+	}
+
 	display(): void {
 		this.flushPendingTextSaves();
 		const { containerEl } = this;
@@ -329,7 +344,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 				dropdown.onChange(async (value) => {
 					this.plugin.settings.newFileLocationMode = value as NewFileLocationMode;
 					await this.plugin.saveSettings("none");
-					this.display();
+					this.refreshSettingsView();
 				});
 			});
 
@@ -354,7 +369,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 							new FolderSuggestModal(this.app, (folder) => {
 								this.plugin.settings.newFileFolderPath = folder.path;
 								void this.plugin.saveSettings("none");
-								this.display();
+										this.refreshSettingsView();
 							}).open();
 						});
 				});
@@ -414,7 +429,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 						}
 
 						await this.plugin.saveSettings("dashboard");
-						this.display();
+						this.refreshSettingsView();
 					})
 			);
 
@@ -485,7 +500,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 							try {
 								await mountManager.relinkMount(mount, this.plugin.settings.externalMountLinkType);
 								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_RELINKED"));
-								this.display();
+										this.refreshSettingsView();
 							} catch (error) {
 								new Notice(`${t("SETTINGS_EXTERNAL_MOUNT_NOTICE_FAILED")}: ${String(error)}`);
 							}
@@ -504,7 +519,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 								this.plugin.settings.externalMounts = this.plugin.settings.externalMounts.filter((item) => item.id !== mount.id);
 								await this.plugin.saveSettings("dashboard");
 								new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_REMOVED"));
-								this.display();
+										this.refreshSettingsView();
 							} catch (error) {
 								new Notice(`${t("SETTINGS_EXTERNAL_MOUNT_NOTICE_FAILED")}: ${String(error)}`);
 							}
@@ -549,7 +564,7 @@ export class CodeSpaceSettingTab extends PluginSettingTab {
 									this.plugin.settings.externalMounts.push(mount);
 									await this.plugin.saveSettings("dashboard");
 									new Notice(t("SETTINGS_EXTERNAL_MOUNT_NOTICE_CREATED"));
-									this.display();
+											this.refreshSettingsView();
 								} catch (error) {
 									new Notice(`${t("SETTINGS_EXTERNAL_MOUNT_NOTICE_FAILED")}: ${String(error)}`);
 								}

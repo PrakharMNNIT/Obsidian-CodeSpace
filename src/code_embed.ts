@@ -164,7 +164,6 @@ const embedObserversByDoc = new WeakMap<Document, MutationObserver>();
 const embedPrintRefreshByDoc = new WeakMap<Document, () => void>();
 const embedTargets = new TargetRegistry<HTMLElement>();
 const trackedDocuments = new Set<Document>();
-const CODE_SPACE_POPOUT_STYLE_ID = "code-space-popout-styles";
 const CODE_SPACE_SOURCE_PATH_ATTR = "data-code-space-source-path";
 const SOURCE_PATH_ATTR_CANDIDATES = [
 	"data-path",
@@ -350,45 +349,6 @@ function installPrintRefreshForDocument(doc: Document, docWindow: Window, plugin
 
 function ensureCodeSpaceStylesInDocument(targetDoc: Document, plugin: CodeSpacePlugin) {
 	applyEmbedCssVariables(targetDoc, plugin);
-
-	// Some Obsidian popout windows do not automatically include plugin CSS. Copy the existing stylesheet
-	// reference from the main window so the embed UI renders consistently.
-	if (targetDoc.getElementById(CODE_SPACE_POPOUT_STYLE_ID)) return;
-
-	try {
-		const mainDoc = activeDocument;
-		const maybeLink1 = mainDoc.querySelector('link[href*="plugins/code-space/styles.css"]');
-		const maybeLink2 = mainDoc.querySelector('link[href*="/plugins/code-space/styles.css"]');
-		const link =
-			(maybeLink1 instanceof HTMLLinkElement ? maybeLink1 : null) ??
-			(maybeLink2 instanceof HTMLLinkElement ? maybeLink2 : null);
-
-		if (link?.href) {
-			const newLink = targetDoc.createElement("link");
-			newLink.id = CODE_SPACE_POPOUT_STYLE_ID;
-			newLink.rel = "stylesheet";
-			newLink.type = "text/css";
-			newLink.href = link.href;
-			targetDoc.head?.appendChild(newLink);
-			return;
-		}
-	} catch {
-		// Ignore.
-	}
-
-	// Fallback: clone the inline style tag if Obsidian injected plugin CSS as <style>.
-	const styleTags = Array.from(activeDocument.querySelectorAll("style"));
-	const codeSpaceStyle = styleTags.find((styleEl) => {
-		const text = styleEl.textContent ?? "";
-		return text.includes(".code-embed-container") || text.includes(".code-space-container");
-	});
-
-	if (codeSpaceStyle?.textContent) {
-		const newStyle = targetDoc.createElement("style");
-		newStyle.id = CODE_SPACE_POPOUT_STYLE_ID;
-		newStyle.textContent = codeSpaceStyle.textContent;
-		targetDoc.head?.appendChild(newStyle);
-	}
 }
 
 function resolveSourcePathForEmbed(embedEl: HTMLElement, plugin: CodeSpacePlugin): string {

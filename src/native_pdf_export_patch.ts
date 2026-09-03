@@ -325,7 +325,7 @@ async function replacePopupCodeEmbeds(
 
 			const fullContent = await plugin.app.vault.read(resolved.file);
 			const slicedContent = sliceFileContent(fullContent, resolved.startLine, resolved.endLine);
-			const replacementEl = embedEl.ownerDocument.createElement("div");
+			const replacementEl = embedEl.ownerDocument.createDiv();
 			replacementEl.className = "code-space-native-pdf-code markdown-rendered";
 
 			const child = new MarkdownRenderChild(replacementEl);

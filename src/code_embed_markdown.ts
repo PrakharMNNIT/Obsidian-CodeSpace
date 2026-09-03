@@ -220,12 +220,22 @@ export function resolveCodeEmbedReference(
 	};
 }
 
+function splitFileLines(content: string): string[] {
+	const lines = content.replace(/\r\n?/g, "\n").split("\n");
+	// A terminal newline terminates the last real line; it is not an extra
+	// source line for an explicit embed range.
+	if (lines.length > 1 && lines[lines.length - 1] === "") {
+		lines.pop();
+	}
+	return lines;
+}
+
 export function sliceFileContent(content: string, startLine: number, endLine: number): string {
 	if (startLine <= 1 && endLine <= 0) {
 		return content;
 	}
 
-	const lines = content.split("\n");
+	const lines = splitFileLines(content);
 	const clampedStart = Math.min(Math.max(startLine, 1), lines.length);
 	const clampedEnd = endLine > 0 ? Math.min(Math.max(endLine, clampedStart), lines.length) : lines.length;
 	return lines.slice(clampedStart - 1, clampedEnd).join("\n");

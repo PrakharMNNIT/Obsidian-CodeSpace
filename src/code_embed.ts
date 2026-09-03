@@ -6,10 +6,11 @@ import { tags } from "@lezer/highlight";
 import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { Compartment } from "@codemirror/state";
 import CodeSpacePlugin from "./main";
-import { createFencedCodeBlock } from "./code_embed_markdown";
+import { createFencedCodeBlock, sliceFileContent } from "./code_embed_markdown";
 import { t } from "./lang/helpers";
 import { EMBED_RENDERABLE_EXTENSIONS, LANGUAGE_PACKAGES } from "./language_registry";
 import { TargetRegistry } from "./target_registry";
+import { setupScrollbarVisibility } from "./scrollbar_visibility";
 
 // Syntax highlighting styles
 const lightHighlightStyle = HighlightStyle.define([
@@ -90,6 +91,7 @@ class CodeEmbedChild extends MarkdownRenderChild {
 	private themeCompartment: Compartment;
 	private themeEventRef: EventRef | null = null;
 	private ownerDoc: Document;
+	private cleanupScrollbarVisibility?: () => void;
 
 	constructor(
 		containerEl: HTMLElement,
@@ -123,6 +125,7 @@ class CodeEmbedChild extends MarkdownRenderChild {
 			state,
 			parent: this.containerEl,
 		});
+		this.cleanupScrollbarVisibility = setupScrollbarVisibility(this.editorView.scrollDOM);
 
 		// Listen for theme changes
 		this.themeEventRef = this.plugin.app.workspace.on("css-change", () => {
@@ -141,6 +144,8 @@ class CodeEmbedChild extends MarkdownRenderChild {
 			this.themeEventRef = null;
 		}
 		if (this.editorView) {
+			this.cleanupScrollbarVisibility?.();
+			this.cleanupScrollbarVisibility = undefined;
 			this.editorView.destroy();
 		}
 	}
@@ -876,7 +881,7 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 
 	// 处理起始行号：截取从起始行开始的内容
 	let content = fullContent;
-	const fullLineCount = fullContent.split('\n').length;
+	const fullLineCount = fullContent.replace(/\r\n?/g, "\n").replace(/\n$/, "").split("\n").length;
 	const effectiveStartLine = startLine > 0 ? Math.min(startLine, fullLineCount) : 1;
 	// 如果指定了 endLine，则生效；否则为 0 表示不限制
 	const effectiveEndLine = endLine > 0 ? Math.min(endLine, fullLineCount) : 0;
@@ -884,9 +889,7 @@ async function renderCodeEmbed(embedEl: HTMLElement, tFile: TFile, plugin: CodeS
 	const useRangeMode = effectiveEndLine > 0 && effectiveEndLine >= effectiveStartLine;
 
 	if (effectiveStartLine > 1 || useRangeMode) {
-		const lines = fullContent.split('\n');
-		const endIndex = useRangeMode ? effectiveEndLine : fullLineCount;
-		content = lines.slice(effectiveStartLine - 1, endIndex).join('\n');
+		content = sliceFileContent(fullContent, effectiveStartLine, useRangeMode ? effectiveEndLine : 0);
 	}
 
 	// 计算文件的行数

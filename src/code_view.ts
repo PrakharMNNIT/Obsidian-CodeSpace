@@ -15,6 +15,7 @@ import {
 	selectionMatchesQuery,
 } from "./search_utils";
 import { LANGUAGE_PACKAGES } from "./language_registry";
+import { setupScrollbarVisibility } from "./scrollbar_visibility";
 
 export const VIEW_TYPE_CODE_SPACE = "code-space-view";
 
@@ -589,6 +590,7 @@ export class CodeSpaceView extends TextFileView {
 	private expectedSelfWrite: { content: string; expiresAt: number } | null = null;
 	private editorInitFrame: number | null = null;
 	private isClosed = false;
+	private cleanupScrollbarVisibility?: () => void;
 
 	// 必需方法：告诉 Obsidian 这个视图可以接受哪些扩展名
 	static canAcceptExtension(extension: string): boolean {
@@ -893,6 +895,8 @@ export class CodeSpaceView extends TextFileView {
 
 			// 先销毁编辑器，防止它保存二进制内容
 			if (this.editorView) {
+				this.cleanupScrollbarVisibility?.();
+				this.cleanupScrollbarVisibility = undefined;
 				this.editorView.destroy();
 				this.editorView = null as unknown as EditorView;
 			}
@@ -1044,6 +1048,7 @@ export class CodeSpaceView extends TextFileView {
 			state,
 			parent: root
 		});
+		this.cleanupScrollbarVisibility = setupScrollbarVisibility(this.editorView.scrollDOM);
 
 		console.debug("Code Space: Editor created with state");
 
@@ -1248,6 +1253,8 @@ export class CodeSpaceView extends TextFileView {
 
 		this.cleanupMobileViewportFix?.();
 		this.cleanupMobileViewportFix = undefined;
+		this.cleanupScrollbarVisibility?.();
+		this.cleanupScrollbarVisibility = undefined;
 		this.rootEl = undefined;
 		// 销毁自定义搜索面板
 		if (this.searchPanel) {

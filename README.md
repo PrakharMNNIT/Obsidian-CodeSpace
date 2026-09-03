@@ -33,9 +33,9 @@ Obsidian's native workflow is centered on Markdown notes, so its support for cen
 3. **Embedding space**: Works with Obsidian's native features to support references, embedded code previews, and native PDF export as real code blocks.
 4. **Mount space**: Mount external folders into the Vault via system symlinks/junctions for cross-project code management.
 
-<p align="center">
-  <img src="https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=date&legend=top-left" alt="Star History Chart">
-</p>
+<!-- star-history:start -->
+[![Star History](https://raw.githubusercontent.com/UNLINEARITY/Obsidian-CodeSpace/main/assets/star-history/star-history.png)](https://star-history.com/#UNLINEARITY/Obsidian-CodeSpace&Date)
+<!-- star-history:end -->
 
 ---
 

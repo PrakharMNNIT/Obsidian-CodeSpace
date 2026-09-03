@@ -32,9 +32,9 @@ Obsidian 原生工作流更偏向 Markdown 笔记，对**代码文件的集中�
 4. **挂载空间**：通过系统符号链接/目录联接将外部文件夹挂载到 Vault 内，实现跨项目代码管理
 
 
-<p align="center">
-  <img src="https://api.star-history.com/svg?repos=UNLINEARITY/Obsidian-CodeSpace&type=date&legend=top-left" alt="Star History Chart">
-</p>
+<!-- star-history:start -->
+[![Star History](https://raw.githubusercontent.com/UNLINEARITY/Obsidian-CodeSpace/main/assets/star-history/star-history.png)](https://star-history.com/#UNLINEARITY/Obsidian-CodeSpace&Date)
+<!-- star-history:end -->
 
 ---
 

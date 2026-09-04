@@ -34,7 +34,7 @@ Obsidian's native workflow is centered on Markdown notes, so its support for cen
 4. **Mount space**: Mount external folders into the Vault via system symlinks/junctions for cross-project code management.
 
 <!-- star-history:start -->
-[![Star History](https://raw.githubusercontent.com/UNLINEARITY/Obsidian-CodeSpace/main/assets/star-history/star-history.png)](https://star-history.com/#UNLINEARITY/Obsidian-CodeSpace&Date)
+[![Star History](https://raw.githubusercontent.com/praxstack/Obsidian-CodeSpace/main/assets/star-history/star-history.png)](https://star-history.com/#praxstack/Obsidian-CodeSpace&Date)
 <!-- star-history:end -->
 
 ---
